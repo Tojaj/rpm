@@ -1188,6 +1188,41 @@ static struct stat * fakeStat(FileEntry cur, struct stat * statp)
     return statp;
 }
 
+static void addFileListRecord(FileList fl, FileListRec flr)
+{
+    /* Allocate more space if needed */
+    if (fl->files.used == fl->files.alloced) {
+	fl->files.alloced += 128;
+	fl->files.recs = xrealloc(fl->files.recs,
+			fl->files.alloced * sizeof(*(fl->files.recs)));
+    }
+
+    FileListRec flp = &fl->files.recs[fl->files.used];
+
+    flp->fl_st = flr->fl_st;	/* structure assignment */
+    flp->fl_mode = flr->fl_mode;
+    flp->fl_uid = flr->fl_uid;
+    flp->fl_gid = flr->fl_gid;
+
+    flp->cpioPath = xstrdup(flr->cpioPath);
+    flp->diskPath = xstrdup(flr->diskPath);
+    flp->uname = rpmstrPoolId(fl->pool, flr->uname, 1);
+    flp->gname = rpmstrPoolId(fl->pool, flr->gname, 1);
+    flp->langs = xstrdup(flr->langs);
+    flp->caps = xstrdup(flr->caps);
+    flp->flags = flr->flags;
+    flp->specdFlags = flr->specdFlags;
+    flp->verifyFlags = flr->verifyFlags;
+
+    if (!(flp->flags & RPMFILE_EXCLUDE) && S_ISREG(flp->fl_mode)) {
+	if (flp->fl_size >= UINT32_MAX) {
+	    fl->largeFiles = 1;
+	}
+    }
+
+    fl->files.used++;
+}
+
 /**
  * Add a file to the package manifest.
  * @param fl		package file tree walk data
@@ -1332,50 +1367,39 @@ static rpmRC addFile(FileList fl, const char * diskPath,
 	appendStringBuf(check_fileList, "\n");
     }
 
-    /* Add to the file list */
-    if (fl->files.used == fl->files.alloced) {
-	fl->files.alloced += 128;
-	fl->files.recs = xrealloc(fl->files.recs,
-			fl->files.alloced * sizeof(*(fl->files.recs)));
+    struct FileListRec_s flr;
+
+    flr.fl_st = *statp;	    /* structure assignment */
+    flr.fl_mode = fileMode;
+    flr.fl_uid = fileUid;
+    flr.fl_gid = fileGid;
+
+    flr.cpioPath = cpioPath;
+    flr.diskPath = diskPath;
+    flr.uname = fileUname;
+    flr.gname = fileGname;
+
+    if (fl->cur.langs) {
+	flr.langs = argvJoin(fl->cur.langs, "|");
+    } else {
+	flr.langs = xstrdup("");
     }
-	    
-    {	FileListRec flp = &fl->files.recs[fl->files.used];
 
-	flp->fl_st = *statp;	/* structure assignment */
-	flp->fl_mode = fileMode;
-	flp->fl_uid = fileUid;
-	flp->fl_gid = fileGid;
-
-	flp->cpioPath = xstrdup(cpioPath);
-	flp->diskPath = xstrdup(diskPath);
-	flp->uname = rpmstrPoolId(fl->pool, fileUname, 1);
-	flp->gname = rpmstrPoolId(fl->pool, fileGname, 1);
-
-	if (fl->cur.langs) {
-	    flp->langs = argvJoin(fl->cur.langs, "|");
-	} else {
-	    flp->langs = xstrdup("");
-	}
-
-	if (fl->cur.caps) {
-	    flp->caps = xstrdup(fl->cur.caps);
-	} else {
-	    flp->caps = xstrdup("");
-	}
-
-	flp->flags = fl->cur.attrFlags;
-	flp->specdFlags = fl->cur.specdFlags;
-	flp->verifyFlags = fl->cur.verifyFlags;
-
-	if (!(flp->flags & RPMFILE_EXCLUDE) && S_ISREG(flp->fl_mode)) {
-	    if (flp->fl_size >= UINT32_MAX) {
-		fl->largeFiles = 1;
-	    }
-	}
+    if (fl->cur.caps) {
+	flr.caps = fl->cur.caps;
+    } else {
+	flr.caps = "";
     }
+
+    flr.flags = fl->cur.attrFlags;
+    flr.specdFlags = fl->cur.specdFlags;
+    flr.verifyFlags = fl->cur.verifyFlags;
+
+    addFileListRecord(fl, &flr);
+
+    free(flr.langs);
 
     rc = RPMRC_OK;
-    fl->files.used++;
 
 exit:
     if (rc != RPMRC_OK)
