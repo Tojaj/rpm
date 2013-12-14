@@ -692,38 +692,15 @@ int addLangTag(rpmSpec spec, Header h, rpmTagVal tag,
     return 0;
 }
 
-static rpmRC handlePreambleTag(rpmSpec spec, Package pkg, rpmTagVal tag,
-		const char *macro, const char *lang)
+static rpmRC applyPreambleTag(rpmSpec spec, Package pkg, rpmTagVal tag,
+                const char *macro, const char *lang, const char *field)
 {
-    char * field = spec->line;
-    char * end;
     int multiToken = 0;
     rpmsenseFlags tagflags = RPMSENSE_ANY;
     rpmRC rc = RPMRC_FAIL;
-    
-    if (field == NULL) /* XXX can't happen */
-	goto exit;
-    /* Find the start of the "field" and strip trailing space */
-    while ((*field) && (*field != ':'))
-	field++;
-    if (*field != ':') {
-	rpmlog(RPMLOG_ERR, _("line %d: Malformed tag: %s\n"),
-		 spec->lineNum, spec->line);
-	goto exit;
-    }
-    field++;
-    SKIPSPACE(field);
-    if (!*field) {
-	/* Empty field */
-	rpmlog(RPMLOG_ERR, _("line %d: Empty tag: %s\n"),
-		 spec->lineNum, spec->line);
-	goto exit;
-    }
-    end = findLastChar(field);
-    *(end+1) = '\0';
 
     /* See if this is multi-token */
-    end = field;
+    char *end = field;
     SKIPNONSPACE(end);
     if (*end != '\0')
 	multiToken = 1;
@@ -906,7 +883,42 @@ static rpmRC handlePreambleTag(rpmSpec spec, Package pkg, rpmTagVal tag,
 	addMacro(spec->macros, macro, NULL, field, RMIL_SPEC);
     rc = RPMRC_OK;
 exit:
-    return rc;	
+    return rc;
+}
+
+static rpmRC handlePreambleTag(rpmSpec spec, Package pkg, rpmTagVal tag,
+		const char *macro, const char *lang)
+{
+    char * field = spec->line;
+    char * end;
+    rpmRC rc = RPMRC_FAIL;
+
+    if (field == NULL) /* XXX can't happen */
+	goto exit;
+
+    /* Find the start of the "field" and strip trailing space */
+    while ((*field) && (*field != ':'))
+	field++;
+    if (*field != ':') {
+	rpmlog(RPMLOG_ERR, _("line %d: Malformed tag: %s\n"),
+		 spec->lineNum, spec->line);
+	goto exit;
+    }
+    field++;
+    SKIPSPACE(field);
+    if (!*field) {
+	/* Empty field */
+	rpmlog(RPMLOG_ERR, _("line %d: Empty tag: %s\n"),
+		 spec->lineNum, spec->line);
+	goto exit;
+    }
+    end = findLastChar(field);
+    *(end+1) = '\0';
+
+    rc = applyPreambleTag(spec, pkg, tag, macro, lang, field);
+
+exit:
+    return rc;
 }
 
 /* This table has to be in a peculiar order.  If one tag is the */
