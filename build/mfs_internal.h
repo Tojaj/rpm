@@ -130,6 +130,12 @@ struct MfsDeps_s {
     struct MfsDep_s *entries;
 };
 
+struct MfsFile_s {
+    struct FileListRec_s *flr;
+    const char *diskpath;
+    int include_in_original;
+};
+
 typedef const struct MfsDepMapRec_s {
     MfsDepType deptype;
     rpmTagVal nametag;
@@ -247,7 +253,7 @@ void mfsUnloadModules(void *modules);
 rpmRC mfsManagerCallParserHooks(MfsManager mm, rpmSpec cur_spec);
 rpmRC mfsPackageFinalize(MfsPackage mfspkg);
 
-rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec, int *include);
+rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec, MfsFile mfsfile);
 
 #ifdef __cplusplus
 }

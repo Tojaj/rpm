@@ -243,6 +243,7 @@ rpmRC parserfunc_pkgsinfo(MfsContext context)
 
 rpmRC filefunc(MfsContext context, MfsFile file)
 {
+    rpmlog(RPMLOG_INFO, "File: %s\n", mfsFileGetPath(file));
     return RPMRC_OK;
 }
 
@@ -264,7 +265,7 @@ rpmRC init_testmodule(MfsManager mm)
     mfsRegisterParserHook(mm, parserhook);
 
     filehook = mfsFileHookNew(filefunc);
-    mfsFileHookAddGlob(filehook, "*");
+    mfsFileHookAddGlob(filehook, "*.h");
     mfsRegisterFileHook(mm, filehook);
 
     mfsSetGlobalData(mm, "Global data");

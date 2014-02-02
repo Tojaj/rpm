@@ -3,6 +3,7 @@
 #include <dlfcn.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <fnmatch.h>
 
 #include <rpm/header.h>
 #include <rpm/rpmlog.h>
@@ -12,6 +13,7 @@
 #include "build/rpmbuild_internal.h"
 #include "build/parsePreamble_internal.h"
 #include "build/parseChangelog_internal.h"
+#include "build/files_internal.h"
 #include "rpmio/rpmlua.h"
 
 #include "debug.h"
@@ -27,10 +29,6 @@ typedef struct MfsModuleLoadState_s {
     MfsHandleList handles;
 } * MfsModuleLoadState;
 
-
-static inline void mfree(void *ptr) {
-    if (ptr) free(ptr);
-}
 
 static inline char *mstrdup(const char *str) {
     if (!str) return NULL;
@@ -372,29 +370,35 @@ rpmRC mfsManagerCallParserHooks(MfsManager mm, rpmSpec cur_spec)
     return rc;
 }
 
-rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec, int *include)
+rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec, MfsFile mfsfile)
 {
     rpmRC rc = RPMRC_OK;
-    *include = 1;
+
+    if (!mm)
+	return RPMRC_OK;
+
+    mfsfile->include_in_original = 1;
 
     for (MfsFileHook hook = mm->filehooks; hook; hook=hook->next) {
 	MfsFileHookFunc func = hook->func;
         MfsContext context = hook->context;
-	MfsFile mfsfile;
-	int cur_include = 1;
 
 	// Check the glob
-	// XXX TODO
-
-	mfsfile = NULL;
-	// TODO
+	const char *diskpath = mfsfile->diskpath;
+	int match = 0; // 0 - is TRUE in this case
+	for (MfsGlob glob = hook->globs; glob; glob = glob->next)
+	   if ((match = fnmatch(glob->glob, diskpath, 0)) == 0)
+		break;
+	if (match != 0)
+	    // Skip this
+	    continue;
 
 	// Prepare the context
 	context->cur_spec = cur_spec;
 	context->state = MFS_CTXSTATE_FILEHOOK;
 
 	// Call the hook
-        if ((rc = func(context, mfsfile, &cur_include)) != RPMRC_OK) {
+        if ((rc = func(context, mfsfile)) != RPMRC_OK) {
 	    rpmlog(RPMLOG_ERR, _("Module %s returned an error from filehook\n"),
 		   hook->context->modulename);
             break;
@@ -738,7 +742,7 @@ void mfsBTScriptFree(MfsBTScript script)
     if (!script)
 	return;
     freeStringBuf(script->code);
-    mfree(script);
+    free(script);
 }
 
 char *mfsBTScriptGetCode(MfsBTScript script)
@@ -1131,7 +1135,7 @@ rpmRC mfsPackageDeleteScript(MfsPackage pkg, MfsScriptType type)
     headerDel(hdr, rec->progtag);   // Prog from header
     headerDel(hdr, rec->flagstag);  // Flags
     file = (char **) ((size_t)pkg->pkg + (size_t)rec->fileoffset);
-    mfree(*file);
+    free(*file);
     *file = NULL;
 
     return RPMRC_OK;
@@ -1423,10 +1427,10 @@ void mfsScriptFree(MfsScript script)
 {
     if (!script)
 	return;
-    mfree(script->code);
-    mfree(script->prog);
-    mfree(script->file);
-    mfree(script);
+    free(script->code);
+    free(script->prog);
+    free(script->file);
+    free(script);
 }
 
 char *mfsScriptGetCode(MfsScript script)
@@ -1456,7 +1460,7 @@ MfsScriptFlags mfsScriptGetFlags(MfsScript script)
 rpmRC mfsScriptSetCode(MfsScript script, const char *code)
 {
     assert(script);
-    mfree(script->code);
+    free(script->code);
     script->code = mstrdup(code);
     return RPMRC_OK;
 }
@@ -1464,7 +1468,7 @@ rpmRC mfsScriptSetCode(MfsScript script, const char *code)
 rpmRC mfsScriptSetProg(MfsScript script, const char *prog)
 {
     assert(script);
-    mfree(script->prog);
+    free(script->prog);
     script->prog = mstrdup(prog);
     return RPMRC_OK;
 }
@@ -1472,7 +1476,7 @@ rpmRC mfsScriptSetProg(MfsScript script, const char *prog)
 rpmRC mfsScriptSetFile(MfsScript script, const char *fn)
 {
     assert(script);
-    mfree(script->file);
+    free(script->file);
     script->file = mstrdup(fn);
     return RPMRC_OK;
 }
@@ -1495,7 +1499,7 @@ void mfsChangelogsFree(MfsChangelogs changelogs)
 	mfsChangelogFree(e);
 	e = next;
     }
-    mfree(changelogs);
+    free(changelogs);
 }
 
 int mfsChangelogsCount(MfsChangelogs changelogs)
@@ -1644,9 +1648,9 @@ void mfsChangelogFree(MfsChangelog entry)
 {
     if (!entry)
 	return;
-    mfree(entry->name);
-    mfree(entry->text);
-    mfree(entry);
+    free(entry->name);
+    free(entry->text);
+    free(entry);
 }
 
 time_t mfsChangelogGetDate(MfsChangelog entry)
@@ -1702,7 +1706,7 @@ rpmRC mfsChangelogSetDate(MfsChangelog entry, time_t date)
 rpmRC mfsChangelogSetName(MfsChangelog entry, const char *name)
 {
     assert(entry);
-    mfree(entry->name);
+    free(entry->name);
     entry->name = mstrdup(name);
     return RPMRC_OK;
 }
@@ -1710,7 +1714,7 @@ rpmRC mfsChangelogSetName(MfsChangelog entry, const char *name)
 rpmRC mfsChangelogSetText(MfsChangelog entry, const char *text)
 {
     assert(entry);
-    mfree(entry->text);
+    free(entry->text);
     entry->text = mstrdup(text);
     return RPMRC_OK;
 }
@@ -1725,7 +1729,7 @@ void mfsDepsFree(MfsDeps deps) {
 	mfsDepFree(e);
 	e = next;
     }
-    mfree(deps);
+    free(deps);
 }
 
 int mfsDepsCount(MfsDeps deps)
@@ -1873,9 +1877,9 @@ void mfsDepFree(MfsDep entry)
 {
     if (!entry)
 	return;
-    mfree(entry->name);
-    mfree(entry->version);
-    mfree(entry);
+    free(entry->name);
+    free(entry->version);
+    free(entry);
 }
 
 char *mfsDepGetName(MfsDep entry)
@@ -1929,7 +1933,7 @@ char *mfsDepGetFlagsStr(MfsDep entry)
 rpmRC mfsDepSetName(MfsDep entry, const char *name)
 {
     assert(entry);
-    mfree(entry->name);
+    free(entry->name);
     entry->name = mstrdup(name);
     return RPMRC_OK;
 }
@@ -1937,7 +1941,7 @@ rpmRC mfsDepSetName(MfsDep entry, const char *name)
 rpmRC mfsDepSetVersion(MfsDep entry, const char *version)
 {
     assert(entry);
-    mfree(entry->version);
+    free(entry->version);
     entry->version = mstrdup(version);
     return RPMRC_OK;
 }
@@ -1954,6 +1958,25 @@ rpmRC mfsDepSetIndex(MfsDep entry, uint32_t index)
     assert(entry);
     entry->index = index;
     return RPMRC_OK;
+}
+
+/*
+ * Package hook related functions
+ */
+
+const char * mfsFileGetPath(MfsFile file)
+{
+    assert(file);
+    return file->diskpath;
+}
+
+rpmRC mfsPackageAddFile(MfsPackage pkg, MfsFile file)
+{
+    assert(pkg);
+    assert(file);
+
+    int fl; // XXX
+    addFileListRecord(fl, file->flr);
 }
 
 /*

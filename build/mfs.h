@@ -46,7 +46,7 @@ typedef struct MfsFile_s * MfsFile;
 typedef rpmRC (*MfsModuleInitFunc)(MfsManager mm);
 
 typedef rpmRC (*MfsParserHookFunc)(MfsContext context);
-typedef rpmRC (*MfsFileHookFunc)(MfsContext context, MfsFile file, int *include);
+typedef rpmRC (*MfsFileHookFunc)(MfsContext context, MfsFile file);
 
 typedef enum MfsSpecAttr_e {
     MFS_SPEC_ATTR_SPECFILE,	/*!< (String) */
@@ -311,8 +311,8 @@ rpmRC mfsPackageAddPolicyEntry(MfsPackage pkg, const char *policy);
 
 // File Hook Related API
 
-const char * mfsFilePath(MfsFile file);
-rpmRC mfsPackageAddFile(MfsPackage, MfsFile file);
+const char * mfsFileGetPath(MfsFile file);
+rpmRC mfsPackageAddFile(MfsPackage pkg, MfsFile file);
 
 // Helper/Debug function - non guaranted API
 
