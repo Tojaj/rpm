@@ -1162,7 +1162,7 @@ static void FileListFree(FileList fl)
 }
 
 /* forward ref */
-static rpmRC recurseDir(FileList fl, const char * diskPath);
+static rpmRC recurseDir(rpmSpec spec, FileList fl, const char * diskPath);
 
 /* Hack up a stat structure for a %dev or non-existing %ghost */
 static struct stat * fakeStat(FileEntry cur, struct stat * statp)
@@ -1225,12 +1225,13 @@ static void addFileListRecord(FileList fl, FileListRec flr)
 
 /**
  * Add a file to the package manifest.
+ * @param spec		spec file
  * @param fl		package file tree walk data
  * @param diskPath	path to file
  * @param statp		file stat (possibly NULL)
  * @return		RPMRC_OK on success
  */
-static rpmRC addFile(FileList fl, const char * diskPath,
+static rpmRC addFile(rpmSpec spec, FileList fl, const char * diskPath,
 		struct stat * statp)
 {
     size_t plen = strlen(diskPath);
@@ -1311,7 +1312,7 @@ static rpmRC addFile(FileList fl, const char * diskPath,
 
     /* Don't recurse into explicit %dir, don't double-recurse from fts */
     if ((fl->cur.isDir != 1) && (statp == &statbuf) && S_ISDIR(statp->st_mode)) {
-	return recurseDir(fl, diskPath);
+	return recurseDir(spec, fl, diskPath);
     }
 
     fileMode = statp->st_mode;
@@ -1416,7 +1417,7 @@ exit:
  * @param diskPath	path to file
  * @return		RPMRC_OK on success
  */
-static rpmRC recurseDir(FileList fl, const char * diskPath)
+static rpmRC recurseDir(rpmSpec spec, FileList fl, const char * diskPath)
 {
     char * ftsSet[2];
     FTS * ftsp;
@@ -1434,7 +1435,7 @@ static rpmRC recurseDir(FileList fl, const char * diskPath)
 	case FTS_SL:		/* symbolic link */
 	case FTS_SLNONE:	/* symbolic link without target */
 	case FTS_DEFAULT:	/* none of the above */
-	    rc = addFile(fl, fts->fts_accpath, fts->fts_statp);
+	    rc = addFile(spec, fl, fts->fts_accpath, fts->fts_statp);
 	    break;
 	case FTS_DOT:		/* dot or dot-dot */
 	case FTS_DP:		/* postorder directory */
@@ -1467,7 +1468,7 @@ static rpmRC recurseDir(FileList fl, const char * diskPath)
  * @param tag		tag to add
  * @return		RPMRC_OK on success
  */
-static rpmRC processMetadataFile(Package pkg, FileList fl, 
+static rpmRC processMetadataFile(rpmSpec spec, Package pkg, FileList fl, 
 				 const char * fileName, rpmTagVal tag)
 {
     const char * buildDir = "%{_builddir}/%{?buildsubdir}/";
@@ -1514,7 +1515,7 @@ static rpmRC processMetadataFile(Package pkg, FileList fl,
     rc = RPMRC_OK;
 
     if (absolute)
-	rc = addFile(fl, fn, NULL);
+	rc = addFile(spec, fl, fn, NULL);
 
 exit:
     free(apkt);
@@ -1534,7 +1535,8 @@ exit:
  * @param fileName	file to add
  * @return		RPMRC_OK on success
  */
-static rpmRC processBinaryFile(Package pkg, FileList fl, const char * fileName)
+static rpmRC processBinaryFile(rpmSpec spec, Package pkg, FileList fl,
+			       const char * fileName)
 {
     int quote = 1;	/* XXX permit quoted glob characters. */
     int doGlob;
@@ -1582,7 +1584,7 @@ static rpmRC processBinaryFile(Package pkg, FileList fl, const char * fileName)
 
 	if (rpmGlob(diskPath, &argc, &argv) == 0 && argc >= 1) {
 	    for (i = 0; i < argc; i++) {
-		rc = addFile(fl, argv[i], NULL);
+		rc = addFile(spec, fl, argv[i], NULL);
 	    }
 	    argvFree(argv);
 	} else {
@@ -1598,7 +1600,7 @@ static rpmRC processBinaryFile(Package pkg, FileList fl, const char * fileName)
 	    goto exit;
 	}
     } else {
-	rc = addFile(fl, diskPath, NULL);
+	rc = addFile(spec, fl, diskPath, NULL);
     }
 
 exit:
@@ -1744,7 +1746,7 @@ static void processSpecialDir(rpmSpec spec, Package pkg, FileList fl,
     dupAttrRec(&(sd->ar), &(fl->cur.ar));
     dupAttrRec(&(sd->def_ar), &(fl->def.ar));
 
-    (void) processBinaryFile(pkg, fl, sd->dirname);
+    (void) processBinaryFile(spec, pkg, fl, sd->dirname);
 
     freeStringBuf(docScript);
     free(mkdocdir);
@@ -1854,11 +1856,11 @@ static rpmRC processPackageFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
 	    if (fl.cur.attrFlags & RPMFILE_DOCDIR) {
 		argvAdd(&(fl.docDirs), *fn);
 	    } else if (fl.cur.attrFlags & RPMFILE_PUBKEY) {
-		(void) processMetadataFile(pkg, &fl, *fn, RPMTAG_PUBKEYS);
+		(void) processMetadataFile(spec, pkg, &fl, *fn, RPMTAG_PUBKEYS);
 	    } else {
 		if (fl.cur.attrFlags & RPMFILE_DIR)
 		    fl.cur.isDir = 1;
-		(void) processBinaryFile(pkg, &fl, *fn);
+		(void) processBinaryFile(spec, pkg, &fl, *fn);
 	    }
 	}
 
