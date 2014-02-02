@@ -27,6 +27,8 @@
 #include "lib/rpmug.h"
 #include "build/rpmbuild_internal.h"
 #include "build/rpmbuild_misc.h"
+#include "build/mfs_internal.h"
+#include "build/files_internal.h"
 
 #include "debug.h"
 #include <libgen.h>
@@ -34,24 +36,6 @@
 #define SKIPSPACE(s) { while (*(s) && risspace(*(s))) (s)++; }
 #define	SKIPWHITE(_x)	{while(*(_x) && (risspace(*_x) || *(_x) == ',')) (_x)++;}
 #define	SKIPNONWHITE(_x){while(*(_x) &&!(risspace(*_x) || *(_x) == ',')) (_x)++;}
-
-/**
- */
-enum specfFlags_e {
-    SPECD_DEFFILEMODE	= (1 << 0),
-    SPECD_DEFDIRMODE	= (1 << 1),
-    SPECD_DEFUID	= (1 << 2),
-    SPECD_DEFGID	= (1 << 3),
-    SPECD_DEFVERIFY	= (1 << 4),
-
-    SPECD_FILEMODE	= (1 << 8),
-    SPECD_DIRMODE	= (1 << 9),
-    SPECD_UID		= (1 << 10),
-    SPECD_GID		= (1 << 11),
-    SPECD_VERIFY	= (1 << 12)
-};
-
-typedef rpmFlags specfFlags;
 
 /* internal %files parsing state attributes */
 enum parseAttrs_e {
@@ -64,42 +48,6 @@ enum parseAttrs_e {
 /* bits up to 15 (for now) reserved for exported rpmfileAttrs */
 #define PARSEATTR_MASK 0x0000ffff
 
-/**
- */
-typedef struct FileListRec_s {
-    struct stat fl_st;
-#define	fl_dev	fl_st.st_dev
-#define	fl_ino	fl_st.st_ino
-#define	fl_mode	fl_st.st_mode
-#define	fl_nlink fl_st.st_nlink
-#define	fl_uid	fl_st.st_uid
-#define	fl_gid	fl_st.st_gid
-#define	fl_rdev	fl_st.st_rdev
-#define	fl_size	fl_st.st_size
-#define	fl_mtime fl_st.st_mtime
-
-    char *diskPath;		/* get file from here       */
-    char *cpioPath;		/* filename in cpio archive */
-    rpmsid uname;
-    rpmsid gname;
-    unsigned	flags;
-    specfFlags	specdFlags;	/* which attributes have been explicitly specified. */
-    rpmVerifyFlags verifyFlags;
-    char *langs;		/* XXX locales separated with | */
-    char *caps;
-} * FileListRec;
-
-/**
- */
-typedef struct AttrRec_s {
-    rpmsid	ar_fmodestr;
-    rpmsid	ar_dmodestr;
-    rpmsid	ar_user;
-    rpmsid	ar_group;
-    mode_t	ar_fmode;
-    mode_t	ar_dmode;
-} * AttrRec;
-
 /* list of files */
 static StringBuf check_fileList = NULL;
 
@@ -110,52 +58,6 @@ typedef struct specialDir_s {
     struct AttrRec_s def_ar;
     rpmFlags sdtype;
 } * specialDir;
-
-typedef struct FileEntry_s {
-    rpmfileAttrs attrFlags;
-    specfFlags specdFlags;
-    rpmVerifyFlags verifyFlags;
-    struct AttrRec_s ar;
-
-    ARGV_t langs;
-    char *caps;
-
-    /* these are only ever relevant for current entry */
-    unsigned devtype;
-    unsigned devmajor;
-    int devminor;
-    int isDir;
-} * FileEntry;
-
-typedef struct FileRecords_s {
-    FileListRec recs;
-    int alloced;
-    int used;
-} * FileRecords;
-
-/**
- * Package file tree walk data.
- */
-typedef struct FileList_s {
-    /* global filelist state */
-    char * buildRoot;
-    size_t buildRootLen;
-    int processingFailed;
-    int haveCaps;
-    int largeFiles;
-    ARGV_t docDirs;
-    rpmBuildPkgFlags pkgFlags;
-    rpmstrPool pool;
-
-    /* actual file records */
-    struct FileRecords_s files;
-
-    /* active defaults */
-    struct FileEntry_s def;
-
-    /* current file-entry state */
-    struct FileEntry_s cur;
-} * FileList;
 
 static void nullAttrRec(AttrRec ar)
 {
@@ -1188,7 +1090,7 @@ static struct stat * fakeStat(FileEntry cur, struct stat * statp)
     return statp;
 }
 
-static void addFileListRecord(FileList fl, FileListRec flr)
+void addFileListRecord(FileList fl, FileListRec flr)
 {
     /* Allocate more space if needed */
     if (fl->files.used == fl->files.alloced) {
@@ -1397,9 +1299,23 @@ static rpmRC addFile(rpmSpec spec, FileList fl, const char * diskPath,
     flr.verifyFlags = fl->cur.verifyFlags;
 
 // XXX Call filehooks here...
+    MfsFile mfsfile = xcalloc(1, sizeof(*mfsfile));
+    mfsfile->flr = &flr;
+    mfsfile->diskpath = diskPath;
+    mfsfile->include_in_original = 1;
 
-    addFileListRecord(fl, &flr);
+    rc = mfsManagerCallFileHooks(spec->mfs_module_manager, spec, mfsfile);
 
+    if (rc != RPMRC_OK) {
+	free(mfsfile);
+	free(flr.langs);
+	goto exit;
+    }
+
+    if (mfsfile->include_in_original)
+        addFileListRecord(fl, &flr);
+
+    free(mfsfile);
     free(flr.langs);
 
     rc = RPMRC_OK;
