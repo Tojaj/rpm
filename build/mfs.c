@@ -815,7 +815,7 @@ MfsPackage mfsPackageNew(MfsContext context,
     pkg = newPackage(fullname, spec->pool, &spec->packages);
 
     headerPutString(pkg->header, RPMTAG_NAME, fullname);
-    headerPutString(pkg->header, RPMTAG_SUMMARY, summary);
+    addLangTag(spec, pkg->header, RPMTAG_SUMMARY, summary, RPMBUILD_DEFAULT_LANG);
 
     mfs_pkg = xcalloc(1, sizeof(*mfs_pkg));
     mfs_pkg->pkg = pkg;

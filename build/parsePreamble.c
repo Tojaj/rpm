@@ -639,6 +639,8 @@ int addLangTag(rpmSpec spec, Header h, rpmTagVal tag,
 rpmRC applyPreambleTag(rpmSpec spec, Package pkg, rpmTagVal tag,
 	    const char *macro, const char *lang, const char *field)
 {
+    // TODO: Set proper default language RPMBUILD_DEFAULT_LANG
+    // for tags with type 2 in preambleList
     if (!lang)
 	lang = "";
 
