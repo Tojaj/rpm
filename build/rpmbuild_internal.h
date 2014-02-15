@@ -5,6 +5,7 @@
 #include <rpm/rpmutil.h>
 #include <rpm/rpmstrpool.h>
 #include "build/rpmbuild_misc.h"
+#include "build/files_internal.h"
 
 struct TriggerFileEntry {
     int index;
@@ -125,6 +126,8 @@ struct Package_s {
     ARGV_t fileFile;
     ARGV_t fileList;		/* If NULL, package will not be written */
     ARGV_t policyList;
+
+    FileList fl;	/*!< Used during processBinaryFiles() */
 
     Package next;
 };

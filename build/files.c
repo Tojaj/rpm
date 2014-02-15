@@ -1667,44 +1667,15 @@ static void processSpecialDir(rpmSpec spec, Package pkg, FileList fl,
     freeStringBuf(docScript);
     free(mkdocdir);
 }
-				
 
 static rpmRC processPackageFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
 				 Package pkg, int installSpecialDoc, int test)
 {
-    struct AttrRec_s root_ar = { 0, 0, 0, 0, 0, 0 };
-    struct FileList_s fl;
+    FileList fl = pkg->fl;
     ARGV_t fileNames = NULL;
     specialDir specialDoc = NULL;
     specialDir specialLic = NULL;
 
-    pkg->cpioList = NULL;
-
-    for (ARGV_const_t fp = pkg->fileFile; fp && *fp != NULL; fp++) {
-	if (readFilesManifest(spec, pkg, *fp))
-	    return RPMRC_FAIL;
-    }
-    /* Init the file list structure */
-    memset(&fl, 0, sizeof(fl));
-
-    fl.pool = rpmstrPoolLink(spec->pool);
-    /* XXX spec->buildRoot == NULL, then xstrdup("") is returned */
-    fl.buildRoot = rpmGenPath(spec->rootDir, spec->buildRoot, NULL);
-    fl.buildRootLen = strlen(fl.buildRoot);
-
-    root_ar.ar_user = rpmstrPoolId(fl.pool, "root", 1);
-    root_ar.ar_group = rpmstrPoolId(fl.pool, "root", 1);
-    dupAttrRec(&root_ar, &fl.def.ar);	/* XXX assume %defattr(-,root,root) */
-
-    fl.def.verifyFlags = RPMVERIFY_ALL;
-
-    fl.pkgFlags = pkgFlags;
-
-    {	char *docs = rpmGetPath("%{?__docdir_path}", NULL);
-	argvSplit(&fl.docDirs, docs, ":");
-	free(docs);
-    }
-    
     for (ARGV_const_t fp = pkg->fileList; *fp != NULL; fp++) {
 	char buf[strlen(*fp) + 1];
 	const char *s = *fp;
@@ -1713,31 +1684,31 @@ static rpmRC processPackageFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
 	    continue;
 	fileNames = argvFree(fileNames);
 	rstrlcpy(buf, s, sizeof(buf));
-	
+
 	/* Reset for a new line in %files */
-	FileEntryFree(&fl.cur);
+	FileEntryFree(&fl->cur);
 
 	/* turn explicit flags into %def'd ones (gosh this is hacky...) */
-	fl.cur.specdFlags = ((unsigned)fl.def.specdFlags) >> 8;
-	fl.cur.verifyFlags = fl.def.verifyFlags;
+	fl->cur.specdFlags = ((unsigned)fl->def.specdFlags) >> 8;
+	fl->cur.verifyFlags = fl->def.verifyFlags;
 
-	if (parseForVerify(buf, 0, &fl.cur) ||
-	    parseForVerify(buf, 1, &fl.def) ||
-	    parseForAttr(fl.pool, buf, 0, &fl.cur) ||
-	    parseForAttr(fl.pool, buf, 1, &fl.def) ||
-	    parseForDev(buf, &fl.cur) ||
-	    parseForConfig(buf, &fl.cur) ||
-	    parseForLang(buf, &fl.cur) ||
-	    parseForCaps(buf, &fl.cur) ||
-	    parseForSimple(buf, &fl.cur, &fileNames))
+	if (parseForVerify(buf, 0, &fl->cur) ||
+	    parseForVerify(buf, 1, &fl->def) ||
+	    parseForAttr(fl->pool, buf, 0, &fl->cur) ||
+	    parseForAttr(fl->pool, buf, 1, &fl->def) ||
+	    parseForDev(buf, &fl->cur) ||
+	    parseForConfig(buf, &fl->cur) ||
+	    parseForLang(buf, &fl->cur) ||
+	    parseForCaps(buf, &fl->cur) ||
+	    parseForSimple(buf, &fl->cur, &fileNames))
 	{
-	    fl.processingFailed = 1;
+	    fl->processingFailed = 1;
 	    continue;
 	}
 
 	for (ARGV_const_t fn = fileNames; fn && *fn; fn++) {
-	    if (fl.cur.attrFlags & RPMFILE_SPECIALDIR) {
-		rpmFlags oattrs = (fl.cur.attrFlags & ~RPMFILE_SPECIALDIR);
+	    if (fl->cur.attrFlags & RPMFILE_SPECIALDIR) {
+		rpmFlags oattrs = (fl->cur.attrFlags & ~RPMFILE_SPECIALDIR);
 		specialDir *sdp = NULL;
 		if (oattrs == RPMFILE_DOC) {
 		    sdp = &specialDoc;
@@ -1749,14 +1720,14 @@ static rpmRC processPackageFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
 		    rpmlog(RPMLOG_ERR,
 			   _("Can't mix special %s with other forms: %s\n"),
 			   (oattrs & RPMFILE_DOC) ? "%doc" : "%license", *fn);
-		    fl.processingFailed = 1;
+		    fl->processingFailed = 1;
 		    continue;
 		}
 
 		/* save attributes on first special doc/license for later use */
 		if (*sdp == NULL) {
 		    *sdp = specialDirNew(pkg->header, oattrs,
-					 &fl.cur.ar, &fl.def.ar);
+					 &fl->cur.ar, &fl->def.ar);
 		}
 		argvAdd(&(*sdp)->files, *fn);
 		continue;
@@ -1765,46 +1736,39 @@ static rpmRC processPackageFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
 	    /* this is now an artificial limitation */
 	    if (fn != fileNames) {
 		rpmlog(RPMLOG_ERR, _("More than one file on a line: %s\n"),*fn);
-		fl.processingFailed = 1;
+		fl->processingFailed = 1;
 		continue;
 	    }
 
-	    if (fl.cur.attrFlags & RPMFILE_DOCDIR) {
-		argvAdd(&(fl.docDirs), *fn);
-	    } else if (fl.cur.attrFlags & RPMFILE_PUBKEY) {
-		(void) processMetadataFile(spec, pkg, &fl, *fn, RPMTAG_PUBKEYS);
+	    if (fl->cur.attrFlags & RPMFILE_DOCDIR) {
+		argvAdd(&(fl->docDirs), *fn);
+	    } else if (fl->cur.attrFlags & RPMFILE_PUBKEY) {
+		(void) processMetadataFile(spec, pkg, fl, *fn, RPMTAG_PUBKEYS);
 	    } else {
-		if (fl.cur.attrFlags & RPMFILE_DIR)
-		    fl.cur.isDir = 1;
-		(void) processBinaryFile(spec, pkg, &fl, *fn);
+		if (fl->cur.attrFlags & RPMFILE_DIR)
+		    fl->cur.isDir = 1;
+		(void) processBinaryFile(spec, pkg, fl, *fn);
 	    }
 	}
 
-	if (fl.cur.caps)
-	    fl.haveCaps = 1;
+	if (fl->cur.caps)
+	    fl->haveCaps = 1;
     }
 
     /* Now process special docs and licenses if present */
     if (specialDoc)
-	processSpecialDir(spec, pkg, &fl, specialDoc, installSpecialDoc, test);
+	processSpecialDir(spec, pkg, fl, specialDoc, installSpecialDoc, test);
     if (specialLic)
-	processSpecialDir(spec, pkg, &fl, specialLic, installSpecialDoc, test);
-    
-    if (fl.processingFailed)
+	processSpecialDir(spec, pkg, fl, specialLic, installSpecialDoc, test);
+
+    if (fl->processingFailed)
 	goto exit;
-
-    /* Verify that file attributes scope over hardlinks correctly. */
-    if (checkHardLinks(&fl.files))
-	(void) rpmlibNeedsFeature(pkg, "PartialHardlinkSets", "4.0.4-1");
-
-    genCpioListAndHeader(&fl, pkg, 0);
 
 exit:
     argvFree(fileNames);
-    FileListFree(&fl);
     specialDirFree(specialDoc);
     specialDirFree(specialLic);
-    return fl.processingFailed ? RPMRC_FAIL : RPMRC_OK;
+    return fl->processingFailed ? RPMRC_FAIL : RPMRC_OK;
 }
 
 static void genSourceRpmName(rpmSpec spec)
@@ -1980,15 +1944,49 @@ rpmRC processBinaryFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
 {
     Package pkg;
     rpmRC rc = RPMRC_OK;
-    
+    char *docs = rpmGetPath("%{?__docdir_path}", NULL);
+
     check_fileList = newStringBuf();
     genSourceRpmName(spec);
-    
+
+    /* Load files manifests and prepare list of FileLists_s */
+    for (pkg = spec->packages; pkg != NULL; pkg = pkg->next) {
+	struct AttrRec_s root_ar = { 0, 0, 0, 0, 0, 0 };
+	FileList fl;
+
+	if (pkg->fileList == NULL)
+	    continue;
+
+	pkg->cpioList = NULL;
+
+	/* Load files manifets */
+	for (ARGV_const_t fp = pkg->fileFile; fp && *fp != NULL; fp++) {
+	    if (readFilesManifest(spec, pkg, *fp))
+		return RPMRC_FAIL;
+        }
+
+	/* Init the file list structure */
+	fl = xcalloc(1, sizeof(*fl));
+	pkg->fl = fl;
+
+	fl->pool = rpmstrPoolLink(spec->pool);
+	/* XXX spec->buildRoot == NULL, then xstrdup("") is returned */
+	fl->buildRoot = rpmGenPath(spec->rootDir, spec->buildRoot, NULL);
+	fl->buildRootLen = strlen(fl->buildRoot);
+
+	root_ar.ar_user = rpmstrPoolId(fl->pool, "root", 1);
+	root_ar.ar_group = rpmstrPoolId(fl->pool, "root", 1);
+	dupAttrRec(&root_ar, &fl->def.ar);	/* XXX assume %defattr(-,root,root) */
+
+	fl->def.verifyFlags = RPMVERIFY_ALL;
+	fl->pkgFlags = pkgFlags;
+	argvSplit(&fl->docDirs, docs, ":");
+    }
+    free(docs);
+
+    /* Process files of all packages */
     for (pkg = spec->packages; pkg != NULL; pkg = pkg->next) {
 	char *nvr;
-	const char *a;
-	int header_color;
-	int arch_color;
 
 	if (pkg->fileList == NULL)
 	    continue;
@@ -1998,11 +1996,34 @@ rpmRC processBinaryFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
 	nvr = headerGetAsString(pkg->header, RPMTAG_NVRA);
 	rpmlog(RPMLOG_NOTICE, _("Processing files: %s\n"), nvr);
 	free(nvr);
-		   
-	if ((rc = processPackageFiles(spec, pkgFlags, pkg, installSpecialDoc, test)) != RPMRC_OK ||
-	    (rc = rpmfcGenerateDepends(spec, pkg)) != RPMRC_OK)
+
+	if ((rc = processPackageFiles(spec, pkgFlags, pkg, installSpecialDoc, test)) != RPMRC_OK)
+	    goto exit;
+    }
+
+    /* Gen CPIO list and Headers, gen dependencies, etc. */
+    for (pkg = spec->packages; pkg != NULL; pkg = pkg->next) {
+	const char *a;
+	int header_color;
+	int arch_color;
+
+	if (pkg->fileList == NULL)
+	    continue;
+
+        /* Verify that file attributes scope over hardlinks correctly. */
+        if (checkHardLinks(&pkg->fl->files))
+	    (void) rpmlibNeedsFeature(pkg, "PartialHardlinkSets", "4.0.4-1");
+
+        genCpioListAndHeader(pkg->fl, pkg, 0);
+
+	FileListFree(pkg->fl);
+	free(pkg->fl);
+	pkg->fl = NULL;
+
+	if ((rc = rpmfcGenerateDepends(spec, pkg)) != RPMRC_OK)
 	    goto exit;
 
+	/* Check arch vs file colors */
 	a = headerGetString(pkg->header, RPMTAG_ARCH);
 	header_color = headerGetNumber(pkg->header, RPMTAG_HEADERCOLOR);
 	if (!rstreq(a, "noarch")) {
@@ -2028,13 +2049,12 @@ rpmRC processBinaryFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
      * We pass it to a script which does the work of finding missing
      * and duplicated files.
      */
-    
-    
+
     if (checkFiles(spec->buildRoot, check_fileList) > 0) {
 	rc = RPMRC_FAIL;
     }
 exit:
     check_fileList = freeStringBuf(check_fileList);
-    
+
     return rc;
 }
