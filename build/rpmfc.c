@@ -1013,76 +1013,41 @@ rpmRC rpmfcClassify(rpmfc fc, ARGV_t argv, rpm_mode_t * fmode)
 
     for (fc->ix = 0; fc->ix < fc->nfiles; fc->ix++) {
 	rpmsid ftypeId;
-	const char * ftype;
 	const char * s = argv[fc->ix];
-	size_t slen = strlen(s);
 	int fcolor = RPMFC_BLACK;
 	rpm_mode_t mode = (fmode ? fmode[fc->ix] : 0);
-	int is_executable = (mode & (S_IXUSR|S_IXGRP|S_IXOTH));
 
-	switch (mode & S_IFMT) {
-	case S_IFCHR:	ftype = "character special";	break;
-	case S_IFBLK:	ftype = "block special";	break;
-	case S_IFIFO:	ftype = "fifo (named pipe)";	break;
-	case S_IFSOCK:	ftype = "socket";		break;
-	case S_IFDIR:	ftype = "directory";		break;
-	case S_IFLNK:
-	case S_IFREG:
-	default:
-	    /* XXX all files with extension ".pm" are perl modules for now. */
-	    if (rpmFileHasSuffix(s, ".pm"))
-		ftype = "Perl5 module source text";
+	rpmcf cf = rpmfcClassifyFile(fc, s, mode);
+	if (!cf)
+	    goto exit;
 
-	    /* XXX all files with extension ".la" are libtool for now. */
-	    else if (rpmFileHasSuffix(s, ".la"))
-		ftype = "libtool library file";
-
-	    /* XXX all files with extension ".pc" are pkgconfig for now. */
-	    else if (rpmFileHasSuffix(s, ".pc"))
-		ftype = "pkgconfig file";
-
-	    /* XXX skip all files in /dev/ which are (or should be) %dev dummies. */
-	    else if (slen >= fc->brlen+sizeof("/dev/") && rstreqn(s+fc->brlen, "/dev/", sizeof("/dev/")-1))
-		ftype = "";
-	    else
-		ftype = magic_file(fc->ms, s);
-
-	    if (ftype == NULL) {
-		rpmlog(is_executable ? RPMLOG_ERR : RPMLOG_WARNING, 
-		       _("Recognition of file \"%s\" failed: mode %06o %s\n"),
-		       s, mode, magic_error(fc->ms));
-		/* only executable files are critical to dep extraction */
-		if (is_executable) {
-		    goto exit;
-		}
-		/* unrecognized non-executables get treated as "data" */
-		ftype = "data";
-	    }
-	}
-
-	rpmlog(RPMLOG_DEBUG, "%s: %s\n", s, ftype);
+	rpmlog(RPMLOG_DEBUG, "%s: %s\n", s, rpmcfType(cf));
 
 	/* Save the path. */
 	fc->fn[fc->ix] = xstrdup(s);
 
-	/* Add (filtered) file coloring */
-	fcolor |= rpmfcColor(ftype);
-
-	/* Add attributes based on file type and/or path */
-	rpmfcAttributes(fc, &fc->fattrs[fc->ix], ftype, s);
-
+	/* Save color */
+	fcolor = rpmcfColor(cf);
 	fc->fcolor[fc->ix] = fcolor;
+
+	/* Add attributes */
+	/* XXX: Stole them directly from cf */
+	fc->fattrs[fc->ix] = cf->fattrs;
+	cf->fattrs = NULL;
 
 	/* Add to file class dictionary and index array */
 	if (fcolor != RPMFC_WHITE && (fcolor & RPMFC_INCLUDE)) {
-	    ftypeId = rpmstrPoolId(fc->cdict, ftype, 1);
+	    ftypeId = rpmstrPoolId(fc->cdict, rpmcfType(cf), 1);
 	    fc->fknown++;
 	} else {
 	    ftypeId = rpmstrPoolId(fc->cdict, "", 1);
 	    fc->fwhite++;
 	}
+
 	/* Pool id's start from 1, for headers we want it from 0 */
 	fc->fcdictx[fc->ix] = ftypeId - 1;
+
+	rpmcfFree(cf);
     }
     rc = RPMRC_OK;
 
