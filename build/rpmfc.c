@@ -656,7 +656,8 @@ static int matches(const struct matchRule *rule,
     }
 }
 
-static void rpmfcAttributes(rpmfc fc, const char *ftype, const char *fullpath)
+static void rpmfcAttributes(rpmfc fc, ARGV_t *fattrs,
+			    const char *ftype, const char *fullpath)
 {
     const char *path = fullpath + fc->brlen;
     int is_executable = 0;
@@ -673,7 +674,7 @@ static void rpmfcAttributes(rpmfc fc, const char *ftype, const char *fullpath)
 
 	/* Add attributes on libmagic type & path pattern matches */
 	if (matches(&(*attr)->incl, ftype, path, is_executable))
-	    argvAddTokens(&fc->fattrs[fc->ix], (*attr)->name);
+	    argvAddTokens(fattrs, (*attr)->name);
     }
 }
 
@@ -1043,7 +1044,7 @@ rpmRC rpmfcClassify(rpmfc fc, ARGV_t argv, rpm_mode_t * fmode)
 	fcolor |= rpmfcColor(ftype);
 
 	/* Add attributes based on file type and/or path */
-	rpmfcAttributes(fc, ftype, s);
+	rpmfcAttributes(fc, &fc->fattrs[fc->ix], ftype, s);
 
 	fc->fcolor[fc->ix] = fcolor;
 
