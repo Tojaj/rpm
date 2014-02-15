@@ -18,6 +18,7 @@
 
 #include "lib/rpmfi_internal.h"		/* rpmfiles stuff for now */
 #include "build/rpmbuild_internal.h"
+#include "build/rpmfc_internal.h"
 
 #include "debug.h"
 
@@ -1424,4 +1425,114 @@ exit:
     rpmfiFree(fi);
 
     return rc;
+}
+
+rpmcf rpmfcClassifyFile(rpmfc fc, const char *fn, rpm_mode_t mode)
+{
+    rpmRC rc;
+    rpmcf cf = NULL;
+
+    if (fc == NULL) {
+	rpmlog(RPMLOG_ERR, _("Empty file classifier\n"));
+	goto exit;
+    }
+
+    if (fn == NULL) {
+	rpmlog(RPMLOG_ERR, _("No file specified\n"));
+	goto exit;
+    }
+
+    if ((rc = rpmfcInit(fc)) != RPMRC_OK)
+	goto exit;
+
+    // Classification
+    {
+	const char * ftype;
+	size_t fnlen = strlen(fn);
+	int fcolor = RPMFC_BLACK;
+	int is_executable = (mode & (S_IXUSR|S_IXGRP|S_IXOTH));
+
+	switch (mode & S_IFMT) {
+	case S_IFCHR:	ftype = "character special";	break;
+	case S_IFBLK:	ftype = "block special";	break;
+	case S_IFIFO:	ftype = "fifo (named pipe)";	break;
+	case S_IFSOCK:	ftype = "socket";		break;
+	case S_IFDIR:	ftype = "directory";		break;
+	case S_IFLNK:
+	case S_IFREG:
+	default:
+	    /* XXX all files with extension ".pm" are perl modules for now. */
+	    if (rpmFileHasSuffix(fn, ".pm"))
+		ftype = "Perl5 module source text";
+
+	    /* XXX all files with extension ".la" are libtool for now. */
+	    else if (rpmFileHasSuffix(fn, ".la"))
+		ftype = "libtool library file";
+
+	    /* XXX all files with extension ".pc" are pkgconfig for now. */
+	    else if (rpmFileHasSuffix(fn, ".pc"))
+		ftype = "pkgconfig file";
+
+	    /* XXX skip all files in /dev/ which are (or should be) %dev dummies. */
+	    else if (fnlen >= fc->brlen+sizeof("/dev/") && rstreqn(fn+fc->brlen, "/dev/", sizeof("/dev/")-1))
+		ftype = "";
+	    else
+		ftype = magic_file(fc->ms, fn);
+
+	    if (ftype == NULL) {
+		rpmlog(is_executable ? RPMLOG_ERR : RPMLOG_WARNING,
+		       _("Recognition of file \"%s\" failed: mode %06o %s\n"),
+		       fn, mode, magic_error(fc->ms));
+		/* only executable files are critical to dep extraction */
+		if (is_executable) {
+		    goto exit;
+		}
+		/* unrecognized non-executables get treated as "data" */
+		ftype = "data";
+	    }
+	}
+
+	rpmlog(RPMLOG_DEBUG, "%s: %s\n", fn, ftype);
+
+	cf = xcalloc(1, sizeof(*cf));
+
+	/* Add (filtered) file coloring */
+	fcolor |= rpmfcColor(ftype);
+	cf->fcolor = fcolor;
+
+	/* Add attributes based on file type and/or path */
+	rpmfcAttributes(fc, &cf->fattrs, ftype, fn);
+
+	/* Add file class */
+	if (fcolor == RPMFC_WHITE || !(fcolor & RPMFC_INCLUDE))
+	    ftype = "";
+	cf->ftype = ftype;
+    }
+
+exit:
+    return cf;
+}
+
+rpm_color_t rpmcfColor(rpmcf cf)
+{
+    return cf->fcolor;
+}
+
+const ARGV_t rpmcfAttrs(rpmcf cf)
+{
+    return cf->fattrs;
+}
+
+const char *rpmcfType(rpmcf cf)
+{
+    return cf->ftype;
+}
+
+rpmcf rpmcfFree(rpmcf cf)
+{
+    if (cf) {
+	argvFree(cf->fattrs);
+        free(cf);
+    }
+    return NULL;
 }
