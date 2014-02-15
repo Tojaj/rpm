@@ -45,7 +45,9 @@ struct rpmfc_s {
     char *buildRoot;	/*!< (Build) root dir */
     size_t brlen;	/*!< rootDir length */
 
+    int initialized;	/*!< was atypes and ms loaded? */
     rpmfcAttr *atypes;	/*!< known file attribute types */
+    magic_t ms;		/*!< magic cookie */
 
     char ** fn;		/*!< (no. files) file names */
     ARGV_t *fattrs;	/*!< (no. files) file attribute tokens */
@@ -784,6 +786,8 @@ rpmfc rpmfcFree(rpmfc fc)
 	for (rpmfcAttr *attr = fc->atypes; attr && *attr; attr++)
 	    rpmfcAttrFree(*attr);
 	free(fc->atypes);
+	if (fc->ms != NULL)
+	    magic_close(fc->ms);
 	free(fc->buildRoot);
 	for (int i = 0; i < fc->nfiles; i++) {
 	    free(fc->fn[i]);
@@ -940,10 +944,44 @@ static int initAttrs(rpmfc fc)
     return nattrs;
 }
 
+static rpmRC rpmfcInit(rpmfc fc)
+{
+    rpmRC rc = RPMRC_FAIL;
+    int msflags = MAGIC_CHECK | MAGIC_COMPRESS | MAGIC_NO_CHECK_TOKENS;
+
+    if (fc->initialized)
+	return RPMRC_OK;
+
+    if (initAttrs(fc) < 1) {
+	rpmlog(RPMLOG_ERR, _("No file attributes configured\n"));
+	goto exit;
+    }
+
+    fc->ms = magic_open(msflags);
+    if (fc->ms == NULL) {
+	rpmlog(RPMLOG_ERR, _("magic_open(0x%x) failed: %s\n"),
+		msflags, strerror(errno));
+	goto exit;
+    }
+
+    if (magic_load(fc->ms, NULL) == -1) {
+	rpmlog(RPMLOG_ERR, _("magic_load failed: %s\n"), magic_error(fc->ms));
+	goto exit;
+    }
+
+    fc->initialized = 1;
+    return RPMRC_OK;
+
+exit:
+    if (fc->ms != NULL) {
+	magic_close(fc->ms);
+	fc->ms = NULL;
+    }
+    return rc;
+}
+
 rpmRC rpmfcClassify(rpmfc fc, ARGV_t argv, rpm_mode_t * fmode)
 {
-    int msflags = MAGIC_CHECK | MAGIC_COMPRESS | MAGIC_NO_CHECK_TOKENS;
-    magic_t ms = NULL;
     rpmRC rc = RPMRC_FAIL;
 
     if (fc == NULL) {
@@ -955,10 +993,8 @@ rpmRC rpmfcClassify(rpmfc fc, ARGV_t argv, rpm_mode_t * fmode)
     if (argv == NULL)
 	return RPMRC_OK;
 
-    if (initAttrs(fc) < 1) {
-	rpmlog(RPMLOG_ERR, _("No file attributes configured\n"));
-	goto exit;
-    }
+    if ((rc = rpmfcInit(fc)) != RPMRC_OK)
+	return rc;
 
     fc->nfiles = argvCount(argv);
     fc->fn = xcalloc(fc->nfiles, sizeof(*fc->fn));
@@ -973,18 +1009,6 @@ rpmRC rpmfcClassify(rpmfc fc, ARGV_t argv, rpm_mode_t * fmode)
     /* Build (sorted) file class dictionary. */
     fc->cdict = rpmstrPoolCreate();
     fc->ddict = rpmstrPoolCreate();
-
-    ms = magic_open(msflags);
-    if (ms == NULL) {
-	rpmlog(RPMLOG_ERR, _("magic_open(0x%x) failed: %s\n"),
-		msflags, strerror(errno));
-	goto exit;
-    }
-
-    if (magic_load(ms, NULL) == -1) {
-	rpmlog(RPMLOG_ERR, _("magic_load failed: %s\n"), magic_error(ms));
-	goto exit;
-    }
 
     for (fc->ix = 0; fc->ix < fc->nfiles; fc->ix++) {
 	rpmsid ftypeId;
@@ -1020,12 +1044,12 @@ rpmRC rpmfcClassify(rpmfc fc, ARGV_t argv, rpm_mode_t * fmode)
 	    else if (slen >= fc->brlen+sizeof("/dev/") && rstreqn(s+fc->brlen, "/dev/", sizeof("/dev/")-1))
 		ftype = "";
 	    else
-		ftype = magic_file(ms, s);
+		ftype = magic_file(fc->ms, s);
 
 	    if (ftype == NULL) {
 		rpmlog(is_executable ? RPMLOG_ERR : RPMLOG_WARNING, 
 		       _("Recognition of file \"%s\" failed: mode %06o %s\n"),
-		       s, mode, magic_error(ms));
+		       s, mode, magic_error(fc->ms));
 		/* only executable files are critical to dep extraction */
 		if (is_executable) {
 		    goto exit;
@@ -1064,8 +1088,6 @@ rpmRC rpmfcClassify(rpmfc fc, ARGV_t argv, rpm_mode_t * fmode)
 exit:
     /* No more additions after this, freeze pool to minimize memory use */
     rpmstrPoolFreeze(fc->cdict, 0);
-    if (ms != NULL)
-	magic_close(ms);
 
     return rc;
 }
