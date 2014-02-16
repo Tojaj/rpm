@@ -198,6 +198,13 @@ static char *getModuleName(char *filename) {
     if (!last_dot || strcmp(last_dot, ".so"))
         return NULL;
 
+    // Check the module name - it must fit pattern [a-zA-Z][a-zA-z0-9_]*
+    if (!isalpha(*name_start))
+	return NULL;
+    for (char *c = name_start; c < last_dot; c++)
+	if (!isalnum(*c) && *c != '_')
+	    return NULL;
+
     module_name = strdup(name_start);
     module_name[last_dot - name_start] = '\0';
 
