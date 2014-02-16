@@ -1299,23 +1299,19 @@ static rpmRC addFile(rpmSpec spec, FileList fl, const char * diskPath,
     flr.verifyFlags = fl->cur.verifyFlags;
 
 // XXX Call filehooks here...
-    MfsFile mfsfile = xcalloc(1, sizeof(*mfsfile));
-    mfsfile->flr = &flr;
-    mfsfile->diskpath = diskPath;
-    mfsfile->include_in_original = 1;
-
-    rc = mfsManagerCallFileHooks(spec->mfs_module_manager, spec, mfsfile);
-
+    int include_in_original = 1;
+    rc = mfsManagerCallFileHooks(spec->mfs_module_manager,
+				 spec,
+				 &flr,
+				 &include_in_original);
     if (rc != RPMRC_OK) {
-	free(mfsfile);
 	free(flr.langs);
 	goto exit;
     }
 
-    if (mfsfile->include_in_original)
+    if (include_in_original)
         addFileListRecord(fl, &flr);
 
-    free(mfsfile);
     free(flr.langs);
 
     rc = RPMRC_OK;

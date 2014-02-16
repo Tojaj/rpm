@@ -362,21 +362,54 @@ rpmRC mfsManagerCallParserHooks(MfsManager mm, rpmSpec cur_spec)
     return rc;
 }
 
-rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec, MfsFile mfsfile)
+/* Create a copy of FileListRec, where all strings of the copy are malloced.
+ */
+static FileListRec mfsDupFileListRec(FileListRec rec)
+{
+    FileListRec copy = xcalloc(1, sizeof(*copy));
+    copy->fl_st = rec->fl_st;	// Struct assignment
+    copy->diskPath = mstrdup(rec->diskPath);
+    copy->cpioPath = mstrdup(rec->cpioPath);
+    // XXX: Tricky, but FileListRec has really got strings in these variables
+    copy->uname = mstrdup(rec->uname);
+    copy->gname = mstrdup(rec->gname);
+    // XXX: End of tricky part
+    copy->flags = rec->flags;
+    copy->specdFlags = rec->specdFlags;
+    copy->verifyFlags = rec->verifyFlags;
+    copy->langs = mstrdup(rec->langs);
+    copy->caps = mstrdup(rec->caps);
+    return copy;
+}
+
+static void mfsFreeDuppedFileListRec(FileListRec copy)
+{
+    if (!copy)
+	return;
+    free(copy->diskPath);
+    free(copy->cpioPath);
+    free(copy->uname);
+    free(copy->gname);
+    free(copy->langs);
+    free(copy->caps);
+    free(copy);
+}
+
+rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
+			      FileListRec rec, int *include_in_original)
 {
     rpmRC rc = RPMRC_OK;
+    int local_include_in_original = 1;
 
     if (!mm)
 	return RPMRC_OK;
-
-    mfsfile->include_in_original = 1;
 
     for (MfsFileHook hook = mm->filehooks; hook; hook=hook->next) {
 	MfsFileHookFunc func = hook->func;
         MfsContext context = hook->context;
 
 	// Check the glob
-	const char *diskpath = mfsfile->diskpath;
+	const char *diskpath = rec->diskPath;
 	int match = 0; // 0 - is TRUE in this case
 	for (MfsGlob glob = hook->globs; glob; glob = glob->next)
 	   if ((match = fnmatch(glob->glob, diskpath, 0)) == 0)
@@ -384,6 +417,12 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec, MfsFile mfsfile)
 	if (match != 0)
 	    // Skip this
 	    continue;
+
+	// Prepare the MfsFile
+	MfsFile mfsfile = xcalloc(1, sizeof(*mfsfile));
+	mfsfile->flr = mfsDupFileListRec(rec);
+	mfsfile->diskpath = rec->diskPath;
+	mfsfile->include_in_original = local_include_in_original;
 
 	// Prepare the context
 	context->cur_spec = cur_spec;
@@ -396,8 +435,16 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec, MfsFile mfsfile)
             break;
 	}
 
+	// Get info from the MfsFile and free it
+	if (!mfsfile->include_in_original)
+	    local_include_in_original = 0;
+	mfsFreeDuppedFileListRec(mfsfile->flr);
+	free(mfsfile);
+
 	context->state = MFS_CTXSTATE_UNKNOWN;
     }
+
+    *include_in_original = local_include_in_original;
 
     return rc;
 }

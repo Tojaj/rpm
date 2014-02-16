@@ -252,7 +252,8 @@ void mfsUnloadModules(void *modules);
 rpmRC mfsManagerCallParserHooks(MfsManager mm, rpmSpec cur_spec);
 rpmRC mfsPackageFinalize(MfsPackage mfspkg);
 
-rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec, MfsFile mfsfile);
+rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
+			      FileListRec rec, int *include_in_original);
 
 #ifdef __cplusplus
 }
