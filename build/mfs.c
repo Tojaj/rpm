@@ -418,9 +418,13 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
 	// Check the glob
 	const char *diskpath = rec->diskPath;
 	int match = 0; // 0 - is TRUE in this case
-	for (MfsGlob glob = hook->globs; glob; glob = glob->next)
-	   if ((match = fnmatch(glob->glob, diskpath, 0)) == 0)
+	for (MfsGlob glob = hook->globs; glob; glob = glob->next) {
+	    char *expanded = rpmExpand(glob->glob, NULL);
+	    match = fnmatch(expanded, diskpath, 0);
+	    free(expanded);
+	    if (match == 0)
 		break;
+	}
 	if (match != 0)
 	    // Skip this
 	    continue;

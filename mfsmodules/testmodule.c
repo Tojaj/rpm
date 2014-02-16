@@ -63,7 +63,7 @@ rpmRC parserfunc_newpkg(MfsContext context)
     rc = mfsPackageFinalize(pkg);
     if (rc) return rc;
 
-    mfsSetContextData(context, "Package was added");
+    mfsSetContextData(context, pkg);
 
     return RPMRC_OK;
 }
@@ -235,7 +235,7 @@ rpmRC parserfunc_pkgsinfo(MfsContext context)
     for (int x = 0; x < pkgs; x++) {
 	MfsPackage pkg = mfsSpecGetPackage(spec, x);
 	if (!pkg) {
-	    rpmlog(RPMLOG_ERR, "Cannot get package from a spec");
+	    rpmlog(RPMLOG_ERR, "Cannot get package from a spec\n");
 	    rc = RPMRC_FAIL;
 	    break;
 	}
@@ -249,6 +249,31 @@ rpmRC parserfunc_pkgsinfo(MfsContext context)
 rpmRC filefunc(MfsContext context, MfsFile file)
 {
     rpmlog(RPMLOG_INFO, "File: %s\n", mfsFileGetPath(file));
+
+    MfsPackage pkg = mfsGetContextData(context);
+    if (!pkg) {
+	rpmlog(RPMLOG_ERR, "Cannot get package from context\n");
+	return RPMRC_FAIL;
+    }
+
+    // Get some info
+    char *langs_str = "";
+    ARGV_t langs = mfsFileGetLangs(file);
+    if (langs)
+        langs_str = argvJoin(langs, ",");
+    argvFree(langs);
+
+    rpmlog(RPMLOG_INFO, "cpio path: %s\n", mfsFileGetCpioPath(file));
+    rpmlog(RPMLOG_INFO, "uname: %s\n", mfsFileGetUname(file));
+    rpmlog(RPMLOG_INFO, "gname: %s\n", mfsFileGetGname(file));
+    rpmlog(RPMLOG_INFO, "langs: %s\n", langs_str);
+    rpmlog(RPMLOG_INFO, "caps: %s\n", mfsFileGetCaps(file));
+
+    if (mfsPackageAddFile(pkg, file) != RPMRC_OK) {
+	rpmlog(RPMLOG_ERR, "Cannot add file to package\n");
+	return RPMRC_FAIL;
+    }
+
     return RPMRC_OK;
 }
 
@@ -270,7 +295,8 @@ rpmRC init_testmodule(MfsManager mm)
     mfsRegisterParserHook(mm, parserhook);
 
     filehook = mfsFileHookNew(filefunc);
-    mfsFileHookAddGlob(filehook, "*.h");
+    mfsFileHookAddGlob(filehook, "*%{name}.pc");
+    mfsFileHookAddGlob(filehook, "*yum.h");
     mfsRegisterFileHook(mm, filehook);
 
     mfsSetGlobalData(mm, "Global data");
