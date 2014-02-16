@@ -247,20 +247,32 @@ static rpmRC buildSpec(BTA_t buildArgs, rpmSpec spec, int what)
 			   getStringBuf(spec->prep), test)))
 		goto exit;
 
+	if ((rc = mfsManagerCallBuildHooks(mm, spec, MFS_HOOK_POINT_POSTPREP)) != RPMRC_OK)
+	    goto exit;
+
 	if ((what & RPMBUILD_BUILD) &&
 	    (rc = doScript(spec, RPMBUILD_BUILD, "%build",
 			   getStringBuf(spec->build), test)))
 		goto exit;
+
+	if ((rc = mfsManagerCallBuildHooks(mm, spec, MFS_HOOK_POINT_POSTBUILD)) != RPMRC_OK)
+	    goto exit;
 
 	if ((what & RPMBUILD_INSTALL) &&
 	    (rc = doScript(spec, RPMBUILD_INSTALL, "%install",
 			   getStringBuf(spec->install), test)))
 		goto exit;
 
+	if ((rc = mfsManagerCallBuildHooks(mm, spec, MFS_HOOK_POINT_POSTINTALL)) != RPMRC_OK)
+	    goto exit;
+
 	if ((what & RPMBUILD_CHECK) &&
 	    (rc = doScript(spec, RPMBUILD_CHECK, "%check",
 			   getStringBuf(spec->check), test)))
 		goto exit;
+
+	if ((rc = mfsManagerCallBuildHooks(mm, spec, MFS_HOOK_POINT_POSTCHECK)) != RPMRC_OK)
+	    goto exit;
 
 	if ((what & RPMBUILD_PACKAGESOURCE) &&
 	    (rc = processSourceFiles(spec, buildArgs->pkgFlags)))
