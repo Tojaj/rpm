@@ -1,8 +1,10 @@
 #ifndef	_H_MFS_
 #define	_H_MFS_
 
-#include "lib/rpmds.h"
-#include "lib/rpmtypes.h"
+#include <lib/rpmds.h>
+#include <lib/rpmtypes.h>
+#include <lib/rpmfiles.h>
+#include <rpm/rpmvf.h>
 
 /** \ingroup mfs
  * \file build/mfs.h
@@ -317,6 +319,29 @@ rpmRC mfsPackageAddPolicyEntry(MfsPackage pkg, const char *policy);
 
 const char * mfsFileGetPath(MfsFile file);
 rpmRC mfsPackageAddFile(MfsPackage pkg, MfsFile file);
+int mfsFileGetToOriginal(MfsFile file);
+rpmRC mfsFileSetToOriginal(MfsFile file, int val);
+rpmRC mfsFileGetStat(MfsFile file, struct stat *st);
+rpmRC mfsFileSetStat(MfsFile file, struct stat *st);
+const char *mfsFileGetDiskPath(MfsFile file);
+rpmRC mfsFileSetDiskPath(MfsFile file, const char *path);
+const char *mfsFileGetCpioPath(MfsFile file);
+rpmRC mfsFileSetCpioPath(MfsFile file, const char *path);
+const char *mfsFileGetUname(MfsFile file);
+rpmRC mfsFileSetUname(MfsFile file, const char *uname);
+const char *mfsFileGetGname(MfsFile file);
+rpmRC mfsFileSetGname(MfsFile file, const char *gname);
+/* For flags see rpmfileAttrs_e
+ */
+rpmFlags mfsFileGetFlags(MfsFile file);
+rpmRC mfsFileSetFlags(MfsFile file, rpmFlags flags);
+// TODO: API for specdFlags manipulation (?)
+rpmVerifyFlags mfsFileGetVerifyFlags(MfsFile file);
+rpmRC mfsFileSetVerifyFlags(MfsFile file, rpmVerifyFlags flags);
+ARGV_t mfsFileGetLangs(MfsFile file);
+rpmRC mfsFileSetLangs(MfsFile file, const ARGV_t langs);
+const char *mfsFileGetCaps(MfsFile file);
+rpmRC mfsFileSetCaps(MfsFile file, const char *caps);
 
 // Helper/Debug function - non guaranted API
 

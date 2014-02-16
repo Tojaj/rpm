@@ -371,8 +371,8 @@ static FileListRec mfsDupFileListRec(FileListRec rec)
     copy->diskPath = mstrdup(rec->diskPath);
     copy->cpioPath = mstrdup(rec->cpioPath);
     // XXX: Tricky, but FileListRec has really got strings in these variables
-    copy->uname = mstrdup(rec->uname);
-    copy->gname = mstrdup(rec->gname);
+    copy->uname = mstrdup((const char *) rec->uname);
+    copy->gname = mstrdup((const char *) rec->gname);
     // XXX: End of tricky part
     copy->flags = rec->flags;
     copy->specdFlags = rec->specdFlags;
@@ -388,8 +388,8 @@ static void mfsFreeDuppedFileListRec(FileListRec copy)
 	return;
     free(copy->diskPath);
     free(copy->cpioPath);
-    free(copy->uname);
-    free(copy->gname);
+    free((char *) copy->uname);
+    free((char *) copy->gname);
     free(copy->langs);
     free(copy->caps);
     free(copy);
@@ -2024,6 +2024,156 @@ rpmRC mfsPackageAddFile(MfsPackage pkg, MfsFile file)
     }
 
     addFileListRecord(fl, file->flr);
+    return RPMRC_OK;
+}
+
+int mfsFileGetToOriginal(MfsFile file)
+{
+    assert(file);
+    return file->include_in_original;
+}
+
+rpmRC mfsFileSetToOriginal(MfsFile file, int val)
+{
+    assert(file);
+    file->include_in_original = (val) ? 1 : 0;
+    return RPMRC_OK;
+}
+
+rpmRC mfsFileGetStat(MfsFile file, struct stat *st)
+{
+    assert(file);
+    if (!st) return RPMRC_OK;
+    *st = file->flr->fl_st;
+    return RPMRC_OK;
+}
+
+rpmRC mfsFileSetStat(MfsFile file, struct stat *st)
+{
+    assert(file);
+    if (!st) {
+	rpmlog(RPMLOG_ERR, _("Pointer to stat struct is NULL"));
+	return RPMRC_FAIL;
+    }
+    file->flr->fl_st = *st;
+    return RPMRC_OK;
+}
+
+const char *mfsFileGetDiskPath(MfsFile file)
+{
+    assert(file);
+    return file->flr->diskPath;
+}
+
+rpmRC mfsFileSetDiskPath(MfsFile file, const char *path)
+{
+    assert(file);
+    free(file->flr->diskPath);
+    file->flr->diskPath = mstrdup(path);
+    return RPMRC_OK;
+}
+
+const char *mfsFileGetCpioPath(MfsFile file)
+{
+    assert(file);
+    return file->flr->cpioPath;
+}
+
+rpmRC mfsFileSetCpioPath(MfsFile file, const char *path)
+{
+    assert(file);
+    free(file->flr->cpioPath);
+    file->flr->cpioPath = mstrdup(path);
+    return RPMRC_OK;
+}
+
+const char *mfsFileGetUname(MfsFile file)
+{
+    assert(file);
+    return file->flr->uname;
+}
+
+rpmRC mfsFileSetUname(MfsFile file, const char *uname)
+{
+    assert(file);
+    free(file->flr->uname);
+    file->flr->uname = mstrdup(uname);
+    return RPMRC_OK;
+}
+
+const char *mfsFileGetGname(MfsFile file)
+{
+    assert(file);
+    return file->flr->gname;
+}
+
+rpmRC mfsFileSetGname(MfsFile file, const char *gname)
+{
+    assert(file);
+    free(file->flr->gname);
+    file->flr->gname = mstrdup(gname);
+    return RPMRC_OK;
+}
+
+/* The flag field can contain flags from
+ * rpmfileAttrs_e and parseAttrs_e
+ * For some flag examples see virtualAttrs
+ */
+rpmFlags mfsFileGetFlags(MfsFile file)
+{
+    assert(file);
+    return file->flr->flags;
+}
+
+rpmRC mfsFileSetFlags(MfsFile file, rpmFlags flags)
+{
+    assert(file);
+    file->flr->flags = flags;
+    return RPMRC_OK;
+}
+
+rpmVerifyFlags mfsFileGetVerifyFlags(MfsFile file)
+{
+    assert(file);
+    return file->flr->verifyFlags;
+}
+
+rpmRC mfsFileSetVerifyFlags(MfsFile file, rpmVerifyFlags flags)
+{
+    assert(file);
+    file->flr->verifyFlags = flags;
+    return RPMRC_OK;
+}
+
+ARGV_t mfsFileGetLangs(MfsFile file)
+{
+    assert(file);
+    ARGV_t list;
+    if (!file->flr->langs)
+	return NULL;
+    argvSplit(&list, file->flr->langs, "|");
+    return list;
+}
+
+rpmRC mfsFileSetLangs(MfsFile file, const ARGV_t langs)
+{
+    assert(file);
+    free(file->flr->langs);
+    file->flr->langs = argvJoin(langs, "|");
+    return RPMRC_OK;
+}
+
+const char *mfsFileGetCaps(MfsFile file)
+{
+    assert(file);
+    return file->flr->caps;
+}
+
+rpmRC mfsFileSet(MfsFile file, const char *caps)
+{
+    assert(file);
+    free(file->flr->caps);
+    file->flr->caps = mstrdup(caps);
     return RPMRC_OK;
 }
 
