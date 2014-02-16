@@ -1954,9 +1954,6 @@ rpmRC processBinaryFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
 	struct AttrRec_s root_ar = { 0, 0, 0, 0, 0, 0 };
 	FileList fl;
 
-	if (pkg->fileList == NULL)
-	    continue;
-
 	pkg->cpioList = NULL;
 
 	/* Load files manifets */
@@ -1988,10 +1985,10 @@ rpmRC processBinaryFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
     for (pkg = spec->packages; pkg != NULL; pkg = pkg->next) {
 	char *nvr;
 
+	headerPutString(pkg->header, RPMTAG_SOURCERPM, spec->sourceRpmName);
+
 	if (pkg->fileList == NULL)
 	    continue;
-
-	headerPutString(pkg->header, RPMTAG_SOURCERPM, spec->sourceRpmName);
 
 	nvr = headerGetAsString(pkg->header, RPMTAG_NVRA);
 	rpmlog(RPMLOG_NOTICE, _("Processing files: %s\n"), nvr);
@@ -2003,12 +2000,14 @@ rpmRC processBinaryFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
 
     /* Gen CPIO list and Headers, gen dependencies, etc. */
     for (pkg = spec->packages; pkg != NULL; pkg = pkg->next) {
+	char *nvr;
 	const char *a;
 	int header_color;
 	int arch_color;
 
-	if (pkg->fileList == NULL)
-	    continue;
+	nvr = headerGetAsString(pkg->header, RPMTAG_NVRA);
+	rpmlog(RPMLOG_NOTICE, _("Generating cpio list: %s\n"), nvr);
+	free(nvr);
 
         /* Verify that file attributes scope over hardlinks correctly. */
         if (checkHardLinks(&pkg->fl->files))
