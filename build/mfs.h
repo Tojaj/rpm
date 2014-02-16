@@ -178,6 +178,10 @@ MfsPackage mfsPackageNew(MfsContext context,
 			 const char *name,
 			 const char *summary,
 			 int flags);
+/* Function that does some sanity checks and
+ * fill some important values like target os, arch, platform, etc.
+ */
+rpmRC mfsPackageFinalize(MfsPackage mfspkg);
 Header mfsPackageGetHeader(MfsPackage pkg);
 const rpmTagVal * mfsPackageTags(void);
 

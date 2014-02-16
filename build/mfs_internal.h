@@ -27,7 +27,6 @@ struct MfsContext_s {
     MfsManager manager;
 
     char *modulename;
-    MfsPackage pkgs;
 
     MfsCtxState state;
 

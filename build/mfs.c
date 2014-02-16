@@ -357,14 +357,6 @@ rpmRC mfsManagerCallParserHooks(MfsManager mm, rpmSpec cur_spec)
 	}
 
 	context->state = MFS_CTXSTATE_UNKNOWN;
-
-	// Finalize added packages
-	for (MfsPackage pkg=context->pkgs; pkg; pkg=pkg->next) {
-	    if ((rc = mfsPackageFinalize(pkg)) != RPMRC_OK) {
-		// TODO
-		break;
-	    }
-	}
     }
 
     return rc;
@@ -821,8 +813,6 @@ MfsPackage mfsPackageNew(MfsContext context,
     mfs_pkg->pkg = pkg;
     mfs_pkg->fullname = fullname;
     mfs_pkg->spec = spec;
-    mfs_pkg->next = context->pkgs;
-    context->pkgs = mfs_pkg;
 
     return mfs_pkg;
 }
@@ -839,6 +829,8 @@ const rpmTagVal * mfsPackageTags(void) {
 	array[x] = preambleList[x].tag;
     return array;
 }
+
+// TODO: RPMTAG_DESCRIPTION
 
 // This function mimics the findPreambleTag()
 rpmRC mfsPackageSetTag(MfsPackage pkg,
@@ -1975,8 +1967,15 @@ rpmRC mfsPackageAddFile(MfsPackage pkg, MfsFile file)
     assert(pkg);
     assert(file);
 
-    int fl; // XXX
+    FileList fl = pkg->pkg->fl;
+
+    if (fl == NULL) {
+	rpmlog(RPMLOG_ERR, _("Cannot append file to the package"));
+	return RPMRC_FAIL;
+    }
+
     addFileListRecord(fl, file->flr);
+    return RPMRC_OK;
 }
 
 /*
@@ -1993,11 +1992,11 @@ rpmRC mfsPackageFinalize(MfsPackage mfspkg)
 
     // Skip valid arch check if not building binary package
     if (!(spec->flags & RPMSPEC_ANYARCH) && checkForValidArchitectures(spec)) {
-	goto exit;
+	goto errxit;
     }
 
-    if (checkForDuplicates(pkg->header, fullname)) {
-	goto exit;
+    if (checkForDuplicates(pkg->header, fullname) != RPMRC_OK) {
+	goto errxit;
     }
 
     if (pkg != spec->packages) {
@@ -2005,10 +2004,63 @@ rpmRC mfsPackageFinalize(MfsPackage mfspkg)
 			(rpmTagVal *)copyTagsDuringParse);
     }
 
-    if (checkForRequired(pkg->header, fullname)) {
-	goto exit;
+    if (checkForRequired(pkg->header, fullname) != RPMRC_OK) {
+	goto errxit;
     }
 
-exit:
+    if (!headerIsEntry(pkg->header, RPMTAG_DESCRIPTION)) {
+	headerPutString(pkg->header, RPMTAG_DESCRIPTION, "Package created by module\n");
+    }
+
+    // Add targets
+    {
+	char *platform = rpmExpand("%{_target_platform}", NULL);
+	char *arch = rpmExpand("%{_target_cpu}", NULL);
+	char *os = rpmExpand("%{_target_os}", NULL);
+	char *optflags = rpmExpand("%{optflags}", NULL);
+
+	headerPutString(pkg->header, RPMTAG_OS, os);
+	/* noarch subpackages already have arch set here, leave it alone */
+	if (!headerIsEntry(pkg->header, RPMTAG_ARCH)) {
+	    headerPutString(pkg->header, RPMTAG_ARCH, arch);
+	}
+	headerPutString(pkg->header, RPMTAG_PLATFORM, platform);
+	headerPutString(pkg->header, RPMTAG_OPTFLAGS, optflags);
+
+	pkg->ds = rpmdsThis(pkg->header, RPMTAG_REQUIRENAME, RPMSENSE_EQUAL);
+
+	free(platform);
+	free(arch);
+	free(os);
+	free(optflags);
+    }
+
+    {
+	const char *arch, *name;
+	char *evr, *isaprov;
+	rpmsenseFlags pflags = RPMSENSE_EQUAL;
+
+	/* <name> = <evr> provide */
+	name = headerGetString(pkg->header, RPMTAG_NAME);
+	arch = headerGetString(pkg->header, RPMTAG_ARCH);
+	evr = headerGetAsString(pkg->header, RPMTAG_EVR);
+	addReqProv(pkg, RPMTAG_PROVIDENAME, name, evr, pflags, 0);
+
+	/*
+	 * <name>(<isa>) = <evr> provide
+	 * FIXME: noarch needs special casing for now as BuildArch: noarch doesn't
+	 * cause reading in the noarch macros :-/ 
+	 */
+	isaprov = rpmExpand(name, "%{?_isa}", NULL);
+	if (!rstreq(arch, "noarch") && !rstreq(name, isaprov)) {
+	    addReqProv(pkg, RPMTAG_PROVIDENAME, isaprov, evr, pflags, 0);
+	}
+	free(isaprov);
+	free(evr);
+    }
+
     return RPMRC_OK;
+
+errxit:
+    return RPMRC_FAIL;
 }

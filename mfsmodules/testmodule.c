@@ -47,6 +47,8 @@ rpmRC parserfunc_newpkg(MfsContext context)
     if (rc) return rc;
     rc = mfsPackageSetTag(pkg, RPMTAG_SUMMARY, "Český popisek", "cs");
     if (rc) return rc;
+//    rc = mfsPackageSetTag(pkg, RPMTAG_DESCRIPTION, "Description", NULL);
+//    if (rc) return rc;
     rc = mfsPackageSetTag(pkg, RPMTAG_REQUIREFLAGS, "bash >= 3", "pre,post");
     if (rc) return rc;
     rc = mfsPackageSetTag(pkg, RPMTAG_SOURCE, "librepo-3c0ece7.tar.xz", "1");
@@ -57,6 +59,9 @@ rpmRC parserfunc_newpkg(MfsContext context)
     //mfsChangelogEntrySetAuthor(entry, "Tomas Mlcoch <tmlcoch at redhat.com> - 0.0.1-1.gitc69642e");
     //mfsChangelogEntrySetText(entry, "Bla bla bla");
     //mfsPackageAddChangelogEntry(pkg, entry);
+
+    rc = mfsPackageFinalize(pkg);
+    if (rc) return rc;
 
     mfsSetContextData(context, "Package was added");
 
