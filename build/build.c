@@ -239,7 +239,7 @@ static rpmRC buildSpec(BTA_t buildArgs, rpmSpec spec, int what)
     } else {
 	int didBuild = (what & (RPMBUILD_PREP|RPMBUILD_BUILD|RPMBUILD_INSTALL));
 
-        if ((rc = mfsManagerCallParserHooks(mm, spec)) != RPMRC_OK)
+        if ((rc = mfsManagerCallBuildHooks(mm, spec, MFS_HOOK_POINT_POSTPARSE)) != RPMRC_OK)
 	    goto exit;
 
 	if ((what & RPMBUILD_PREP) &&

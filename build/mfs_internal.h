@@ -33,7 +33,7 @@ struct MfsContext_s {
     // Hooks related to the context
     // Used only during registration, will be NULL after
     // the call of mfsManagerSortHooks()
-    MfsParserHook parserhooks;
+    MfsBuildHook buildhooks;
     MfsFileHook filehooks;
 
     rpmSpec cur_spec;  /*!< Current spec file during a hook call */
@@ -49,7 +49,7 @@ struct MfsManager_s {
     MfsContext contexts;
 
     // Sorted lists of all hooks
-    MfsParserHook parserhooks;
+    MfsBuildHook buildhooks;
     MfsFileHook filehooks;
 
     rpmSpec mainspec; /*!<
@@ -60,11 +60,12 @@ struct MfsManager_s {
 
 // Hooks
 
-struct MfsParserHook_s {
+struct MfsBuildHook_s {
     MfsContext context;
-    MfsParserHookFunc func;
+    MfsHookPoint point;
+    MfsBuildHookFunc func;
     int32_t priority;
-    struct MfsParserHook_s * next;
+    struct MfsBuildHook_s * next;
 };
 
 struct MfsGlob_s {
@@ -248,9 +249,9 @@ void mfsContextFree(MfsContext context);
 rpmRC mfsLoadModules(void **modules, const char *path, MfsManager msfm);
 void mfsUnloadModules(void *modules);
 
-/* Call all registered parser hooks */
-rpmRC mfsManagerCallParserHooks(MfsManager mm, rpmSpec cur_spec);
-rpmRC mfsPackageFinalize(MfsPackage mfspkg);
+/* Call all registered build hooks */
+rpmRC mfsManagerCallBuildHooks(MfsManager mm, rpmSpec cur_spec,
+			       MfsHookPoint point);
 
 rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
 			      FileListRec rec, int *include_in_original);

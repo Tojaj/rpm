@@ -279,20 +279,20 @@ rpmRC filefunc(MfsContext context, MfsFile file)
 
 rpmRC init_testmodule(MfsManager mm)
 {
-    MfsParserHook parserhook;
+    MfsBuildHook parserhook;
     MfsFileHook filehook;
 
-    parserhook = mfsParserHookNew(parserfunc_newpkg);
-    mfsParserHookSetPriority(parserhook, 1000);
-    mfsRegisterParserHook(mm, parserhook);
+    parserhook = mfsBuildHookNew(parserfunc_newpkg, MFS_HOOK_POINT_POSTPARSE);
+    mfsBuildHookSetPriority(parserhook, 1000);
+    mfsRegisterBuildHook(mm, parserhook);
 
-    parserhook = mfsParserHookNew(parserfunc_pkgsinfo);
-    mfsParserHookSetPriority(parserhook, 2000);
-    mfsRegisterParserHook(mm, parserhook);
+    parserhook = mfsBuildHookNew(parserfunc_pkgsinfo, MFS_HOOK_POINT_POSTPARSE);
+    mfsBuildHookSetPriority(parserhook, 2000);
+    mfsRegisterBuildHook(mm, parserhook);
 
-    parserhook = mfsParserHookNew(parserfunc_specmod);
-    mfsParserHookSetPriority(parserhook, 3000);
-    mfsRegisterParserHook(mm, parserhook);
+    parserhook = mfsBuildHookNew(parserfunc_specmod, MFS_HOOK_POINT_POSTPARSE);
+    mfsBuildHookSetPriority(parserhook, 3000);
+    mfsRegisterBuildHook(mm, parserhook);
 
     filehook = mfsFileHookNew(filefunc);
     mfsFileHookAddGlob(filehook, "*%{name}.pc");

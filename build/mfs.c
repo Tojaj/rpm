@@ -54,15 +54,15 @@ void mfsManagerFree(MfsManager mm)
     free(mm);
 }
 
-static void mfsManagerInsertSortedParserHook(MfsManager mfsm,
-                                             MfsParserHook cur)
+static void mfsManagerInsertSortedBuildHook(MfsManager mfsm,
+                                             MfsBuildHook cur)
 {
-    MfsParserHook prev = NULL;
-    MfsParserHook node = mfsm->parserhooks;
+    MfsBuildHook prev = NULL;
+    MfsBuildHook node = mfsm->buildhooks;
 
     if (!node || cur->priority < node->priority) {
         cur->next = node;
-        mfsm->parserhooks = cur;
+        mfsm->buildhooks = cur;
         return;
     }
 
@@ -105,13 +105,13 @@ static void mfsManagerSortHooks(MfsManager mfsm)
     MfsContext ctx = mfsm->contexts;
 
     while (ctx) {
-        // Use Parser Hooks
-        for (MfsParserHook cur = ctx->parserhooks; cur;) {
-            MfsParserHook next = cur->next;
-            mfsManagerInsertSortedParserHook(mfsm, cur);
+        // Use build Hooks
+        for (MfsBuildHook cur = ctx->buildhooks; cur;) {
+            MfsBuildHook next = cur->next;
+            mfsManagerInsertSortedBuildHook(mfsm, cur);
             cur = next;
         }
-        ctx->parserhooks = NULL;
+        ctx->buildhooks = NULL;
 
         // Use File Hooks
         for (MfsFileHook cur = ctx->filehooks; cur;) {
@@ -125,9 +125,9 @@ static void mfsManagerSortHooks(MfsManager mfsm)
     }
 
     // Debug output
-    rpmlog(RPMLOG_INFO, _("Registered ParserHooks:\n"));
-    for (MfsParserHook cur = mfsm->parserhooks; cur; cur = cur->next)
-        rpmlog(RPMLOG_INFO, _("- Module %s registered ParserHook %p (%d)\n"),
+    rpmlog(RPMLOG_INFO, _("Registered BuildHooks:\n"));
+    for (MfsBuildHook cur = mfsm->buildhooks; cur; cur = cur->next)
+        rpmlog(RPMLOG_INFO, _("- Module %s registered BuildHook %p (%d)\n"),
                 cur->context->modulename, cur->func, cur->priority);
 
     rpmlog(RPMLOG_INFO, _("Registered FileHooks:\n"));
@@ -344,12 +344,18 @@ void mfsUnloadModules(void *p_load_state)
     free(load_state);
 }
 
-rpmRC mfsManagerCallParserHooks(MfsManager mm, rpmSpec cur_spec)
+rpmRC mfsManagerCallBuildHooks(MfsManager mm, rpmSpec cur_spec, MfsHookPoint point)
 {
     rpmRC rc = RPMRC_OK;
 
-    for (MfsParserHook hook = mm->parserhooks; hook; hook=hook->next) {
-        MfsParserHookFunc func = hook->func;
+    if (point >= MFS_HOOK_POINT_SENTINEL)
+	return RPMRC_FAIL;
+
+    for (MfsBuildHook hook = mm->buildhooks; hook; hook=hook->next) {
+	if (hook->point != point)
+	    continue;
+
+        MfsBuildHookFunc func = hook->func;
         MfsContext context = hook->context;
 
 	// Prepare the context
@@ -464,15 +470,21 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
  * Module initialization related API
  */
 
-MfsParserHook mfsParserHookNew(MfsParserHookFunc hookfunc)
+MfsBuildHook mfsBuildHookNew(MfsBuildHookFunc hookfunc, MfsHookPoint point)
 {
-    MfsParserHook hook = xcalloc(1, sizeof(*hook));
+    MfsBuildHook hook;
+
+    if (point >= MFS_HOOK_POINT_SENTINEL)
+	return NULL;
+
+    hook = xcalloc(1, sizeof(*hook));
+    hook->point = point;
     hook->func = hookfunc;
     hook->priority = MFS_HOOK_DEFAULT_PRIORITY_VAL;
     return hook;
 }
 
-rpmRC mfsParserHookSetPriority(MfsParserHook hook, int32_t priority)
+rpmRC mfsBuildHookSetPriority(MfsBuildHook hook, int32_t priority)
 {
     if (priority < MFS_HOOK_MIN_PRIORITY_VAL
             || priority > MFS_HOOK_MAX_PRIORITY_VAL)
@@ -482,12 +494,12 @@ rpmRC mfsParserHookSetPriority(MfsParserHook hook, int32_t priority)
     return RPMRC_OK;
 }
 
-void mfsRegisterParserHook(MfsManager mm, MfsParserHook hook)
+void mfsRegisterBuildHook(MfsManager mm, MfsBuildHook hook)
 {
     MfsContext context = mm->cur_context;
     hook->context = context;
-    hook->next = context->parserhooks;
-    context->parserhooks = hook;
+    hook->next = context->buildhooks;
+    context->buildhooks = hook;
 }
 
 MfsFileHook mfsFileHookNew(MfsFileHookFunc hookfunc)
@@ -818,7 +830,7 @@ rpmRC mfsBTScriptAppendLine(MfsBTScript script, const char *code)
 }
 
 /*
- * Parser Hook Related API
+ * build Hook Related API
  */
 
 // Package
@@ -835,7 +847,7 @@ MfsPackage mfsPackageNew(MfsContext context,
     Package pkg;
 
     if (context->state != MFS_CTXSTATE_PARSERHOOK) {
-	rpmlog(RPMLOG_ERR, _("Packages must be added in a parser hook. "
+	rpmlog(RPMLOG_ERR, _("Packages must be added in a build hook. "
 			     "Cannot add: %s\n"), name);
 	return NULL;
     }

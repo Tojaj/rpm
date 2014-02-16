@@ -22,7 +22,7 @@ extern "C" {
 typedef struct MfsManager_s * MfsManager;
 typedef struct MfsContext_s * MfsContext;
 
-typedef struct MfsParserHook_s * MfsParserHook;
+typedef struct MfsBuildHook_s * MfsBuildHook;
 typedef struct MfsFileHook_s * MfsFileHook;
 
 typedef struct MfsSpec_s * MfsSpec;
@@ -47,8 +47,17 @@ typedef struct MfsFile_s * MfsFile;
  */
 typedef rpmRC (*MfsModuleInitFunc)(MfsManager mm);
 
-typedef rpmRC (*MfsParserHookFunc)(MfsContext context);
+typedef rpmRC (*MfsBuildHookFunc)(MfsContext context);
 typedef rpmRC (*MfsFileHookFunc)(MfsContext context, MfsFile file);
+
+typedef enum MfsHookPoint_e {
+    MFS_HOOK_POINT_POSTPARSE,
+    MFS_HOOK_POINT_POSTPREP,
+    MFS_HOOK_POINT_POSTBUILD,
+    MFS_HOOK_POINT_POSTINTALL,
+    MFS_HOOK_POINT_POSTCHECK,
+    MFS_HOOK_POINT_SENTINEL /*!< The last element of the list */
+} MfsHookPoint;
 
 typedef enum MfsSpecAttr_e {
     MFS_SPEC_ATTR_SPECFILE,	/*!< (String) */
@@ -123,9 +132,9 @@ typedef enum MfsDepType_e {
  * then LIFO approach is used (late registered function has higher priority).
  */
 
-MfsParserHook mfsParserHookNew(MfsParserHookFunc hookfunc);
-rpmRC mfsParserHookSetPriority(MfsParserHook hook, int32_t priority);
-void mfsRegisterParserHook(MfsManager mm, MfsParserHook hook);
+MfsBuildHook mfsBuildHookNew(MfsBuildHookFunc hookfunc, MfsHookPoint point);
+rpmRC mfsBuildHookSetPriority(MfsBuildHook hook, int32_t priority);
+void mfsRegisterBuildHook(MfsManager mm, MfsBuildHook hook);
 
 MfsFileHook mfsFileHookNew(MfsFileHookFunc hookfunc);
 rpmRC mfsFileHookSetPriority(MfsFileHook hook, int32_t priority);
