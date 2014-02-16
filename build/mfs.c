@@ -809,6 +809,8 @@ MfsPackage mfsPackageNew(MfsContext context,
     headerPutString(pkg->header, RPMTAG_NAME, fullname);
     addLangTag(spec, pkg->header, RPMTAG_SUMMARY, summary, RPMBUILD_DEFAULT_LANG);
 
+    pkg->fileList = argvNew();
+
     mfs_pkg = xcalloc(1, sizeof(*mfs_pkg));
     mfs_pkg->pkg = pkg;
     mfs_pkg->fullname = fullname;
