@@ -37,6 +37,8 @@ typedef struct MfsChangelogs_s * MfsChangelogs;
 typedef struct MfsChangelog_s * MfsChangelog;
 typedef struct MfsDeps_s * MfsDeps;
 typedef struct MfsDep_s * MfsDep;
+typedef struct MfsFileLines_s * MfsFileLines;
+typedef struct MfsFileFiles_s * MfsFileFiles;
 typedef struct MfsFile_s * MfsFile;
 
 /* Module init function's name has to follow the pattern: "init_modulename"
@@ -238,6 +240,12 @@ rpmRC mfsPackageSetChangelogs(MfsPackage pkg, MfsChangelogs changelog);
 MfsDeps mfsPackageGetDeps(MfsPackage pkg, MfsDepType deptype);
 rpmRC mfsPackageSetDeps(MfsPackage pkg, MfsDeps deps, MfsDepType deptype);
 
+MfsFileLines mfsPackageGetFileLines(MfsPackage pkg);
+rpmRC mfsPackageSetFileLines(MfsPackage pkg, MfsFileLines flines);
+
+MfsFileFiles mfsPackageGetFileFiles(MfsPackage pkg);
+rpmRC mfsPackageSetFileFiles(MfsPackage pkg, MfsFileFiles filelfiles);
+
 // Scripts
 
 MfsScript mfsScriptNew(void);
@@ -317,10 +325,23 @@ rpmRC mfsDepSetVersion(MfsDep entry, const char *version);
 rpmRC mfsDepSetFlags(MfsDep entry, rpmsenseFlags flags);
 rpmRC mfsDepSetIndex(MfsDep entry, uint32_t index);
 
-// Filelist
+// Files
 
-rpmRC mfsPackageAddFilesListFilelist(MfsPackage pkg, const char *path);
-rpmRC mfsPackageAddFilesListEntry(MfsPackage pkg, const char *entry);
+void mfsFileLinesFree(MfsFileLines flines);
+int mfsFileLinesCount(MfsFileLines flines);
+char *mfsFileLinesGetLine(MfsFileLines flines, int index);
+rpmRC mfsFileLinesAppend(MfsFileLines flines, const char *line);
+rpmRC mfsFileLinesDelete(MfsFileLines flines, int index);
+ARGV_t mfsFileLinesGetAll(MfsFileLines flines);
+
+void mfsFileFilesFree(MfsFileFiles ffiles);
+int mfsFileFilesCount(MfsFileFiles ffiles);
+char *mfsFileFilesGetFn(MfsFileFiles ffiles, int index);
+rpmRC mfsFileFilesAppend(MfsFileFiles ffiles, const char *flist);
+rpmRC mfsFileFilesDelete(MfsFileFiles ffiles, int index);
+ARGV_t mfsFileFilesGetAll(MfsFileFiles ffiles);
+
+// Policies
 
 rpmRC mfsPackageAddPolicyEntry(MfsPackage pkg, const char *policy);
 

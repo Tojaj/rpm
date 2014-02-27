@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <fnmatch.h>
+#include <ctype.h>
 
 #include <rpm/header.h>
 #include <rpm/rpmlog.h>
@@ -30,9 +31,32 @@ typedef struct MfsModuleLoadState_s {
 } * MfsModuleLoadState;
 
 
-static inline char *mstrdup(const char *str) {
+/*
+ * Helper functions
+ */
+
+static inline char *mstrdup(const char *str)
+{
     if (!str) return NULL;
     return xstrdup(str);
+}
+
+static ARGV_t argvCopy(ARGV_t argv)
+{
+    ARGV_t copy = NULL;
+    if (argv) {
+        copy = argvNew();
+        argvAppend(&copy, argv);
+    }
+    return copy;
+}
+
+static void argvDelete(ARGV_t argv, int i)
+{
+    int ac = argvCount(argv);
+    if (i < 0) return;
+    for (int x=i; x < ac; x++)
+	argv[x] = argv[x+1];
 }
 
 /*
@@ -1478,6 +1502,35 @@ pkg_set_dep_error:
     return rc;
 }
 
+MfsFileLines mfsPackageGetFileLines(MfsPackage pkg)
+{
+    MfsFileLines fl = xcalloc(1, sizeof(*fl));
+    fl->filelines = argvCopy(pkg->pkg->fileList);
+    return fl;
+}
+
+rpmRC mfsPackageSetFileLines(MfsPackage pkg, MfsFileLines flines)
+{
+    argvFree(pkg->pkg->fileList);
+    pkg->pkg->fileList = argvCopy(flines->filelines);
+    return RPMRC_OK;
+}
+
+MfsFileFiles mfsPackageGetFileFiles(MfsPackage pkg)
+{
+    MfsFileFiles fl = xcalloc(1, sizeof(*fl));
+    fl->filefiles = argvCopy(pkg->pkg->fileFile);
+    return fl;
+}
+
+rpmRC mfsPackageSetFileFiles(MfsPackage pkg, MfsFileFiles filefiles)
+{
+    argvFree(pkg->pkg->fileFile);
+    pkg->pkg->fileFile = argvCopy(filefiles->filefiles);
+    return RPMRC_OK;
+}
+
+
 // Scripts
 
 MfsScript mfsScriptNew(void)
@@ -2022,6 +2075,90 @@ rpmRC mfsDepSetIndex(MfsDep entry, uint32_t index)
     assert(entry);
     entry->index = index;
     return RPMRC_OK;
+}
+
+void mfsFileLinesFree(MfsFileLines flines)
+{
+    if (!flines)
+	return;
+    argvFree(flines->filelines);
+    free(flines);
+}
+
+int mfsFileLinesCount(MfsFileLines flines)
+{
+    assert(flines);
+    return argvCount(flines->filelines);
+}
+
+char *mfsFileLinesGetLine(MfsFileLines flines, int index)
+{
+    assert(flines);
+    if (index >= 0 && index < argvCount(flines->filelines))
+	return xstrdup(flines->filelines[index]);
+    return NULL;
+}
+
+rpmRC mfsFileLinesAppend(MfsFileLines flines, const char *line)
+{
+    assert(flines);
+    argvAdd(&flines->filelines, line);
+    return RPMRC_OK;
+}
+
+rpmRC mfsFileLinesDelete(MfsFileLines flines, int index)
+{
+    assert(flines);
+    argvDelete(flines->filelines, index);
+    return RPMRC_OK;
+}
+
+ARGV_t mfsFileLinesGetAll(MfsFileLines flines)
+{
+    assert(flines);
+    return argvCopy(flines->filelines);
+}
+
+void mfsFileFilesFree(MfsFileFiles ffiles)
+{
+    if (!ffiles)
+	return;
+    argvFree(ffiles->filefiles);
+    free(ffiles);
+}
+
+int mfsFileFilesCount(MfsFileFiles ffiles)
+{
+    assert(ffiles);
+    return argvCount(ffiles->filefiles);
+}
+
+char *mfsFileFilesGetFn(MfsFileFiles ffiles, int index)
+{
+    assert(ffiles);
+    if (index >= 0 && index < argvCount(ffiles->filefiles))
+    return xstrdup(ffiles->filefiles[index]);
+    return NULL;
+}
+
+rpmRC mfsFileFilesAppend(MfsFileFiles ffiles, const char *flist)
+{
+    assert(ffiles);
+    argvAdd(&ffiles->filefiles, flist);
+    return RPMRC_OK;
+}
+
+rpmRC mfsFileFilesDelete(MfsFileFiles ffiles, int index)
+{
+    assert(ffiles);
+    argvDelete(ffiles->filefiles, index);
+    return RPMRC_OK;
+}
+
+ARGV_t mfsFileFilesGetAll(MfsFileFiles ffiles)
+{
+    assert(ffiles);
+    return argvCopy(ffiles->filefiles);
 }
 
 /*

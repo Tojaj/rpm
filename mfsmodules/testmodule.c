@@ -104,14 +104,15 @@ void print_pkginfo(MfsPackage pkg)
 {
     Header hdr = mfsPackageGetHeader(pkg);
 
-    rpmlog(RPMLOG_INFO, "\n========================================\n");
-    rpmlog(RPMLOG_INFO, " %s\n", headerGetString(hdr, RPMTAG_NAME));
+    rpmlog(RPMLOG_INFO, "\n########################################\n");
+    rpmlog(RPMLOG_INFO, "### %s", headerGetString(hdr, RPMTAG_NAME));
+    rpmlog(RPMLOG_INFO, "\n########################################\n");
 
     // Scripts
 
     for (ScriptType scripttype = scripttypes; scripttype->name; scripttype++) {
 	rpmlog(RPMLOG_INFO, "\nScript (%s):\n", scripttype->name);
-	rpmlog(RPMLOG_INFO, "----------------------------------------\n");
+	rpmlog(RPMLOG_INFO, "========================================\n");
 
 	MfsScript script = mfsPackageGetScript(pkg, scripttype->type);
 
@@ -142,12 +143,13 @@ void print_pkginfo(MfsPackage pkg)
 	if (prog) free(prog);
 	if (file) free(file);
     }
+    rpmlog(RPMLOG_INFO, "\n");
 
     // Dependencies
 
     for (DepType deptype = deptypes; deptype->name; deptype++) {
 	rpmlog(RPMLOG_INFO, "\nDependencies (%s):\n", deptype->name);
-	rpmlog(RPMLOG_INFO, "----------------------------------------\n");
+	rpmlog(RPMLOG_INFO, "========================================\n");
 
 	MfsDeps deps = mfsPackageGetDeps(pkg, deptype->type);
 
@@ -183,10 +185,44 @@ void print_pkginfo(MfsPackage pkg)
 
 	mfsDepsFree(deps);
     }
+    rpmlog(RPMLOG_INFO, "\n");
+
+    // Files
+    {
+    rpmlog(RPMLOG_INFO, "Lines from %%files section:\n");
+    rpmlog(RPMLOG_INFO, "========================================\n");
+    MfsFileLines flines = mfsPackageGetFileLines(pkg);
+
+    int count = mfsFileLinesCount(flines);
+    for (int i = 0; i < count; i++) {
+	char *line = mfsFileLinesGetLine(flines, i);
+	rpmlog(RPMLOG_INFO, " + %s", line);
+	free(line);
+    }
+    rpmlog(RPMLOG_INFO, "\n\n");
+    mfsFileLinesFree(flines);
+    }
+
+    // Filelists
+    {
+    rpmlog(RPMLOG_INFO, "Filelists for %%files section:\n");
+    rpmlog(RPMLOG_INFO, "========================================\n");
+    MfsFileFiles ffiles = mfsPackageGetFileFiles(pkg);
+
+    int count = mfsFileFilesCount(ffiles);
+    for (int i = 0; i < count; i++) {
+	char *line = mfsFileFilesGetFn(ffiles, i);
+	rpmlog(RPMLOG_INFO, " + %s", line);
+	free(line);
+    }
+    rpmlog(RPMLOG_INFO, "\n\n");
+    mfsFileFilesFree(ffiles);
+    }
 
     // Changelog
+    {
     rpmlog(RPMLOG_INFO, "Changelogs:\n");
-    rpmlog(RPMLOG_INFO, "\n----------------------------------------\n");
+    rpmlog(RPMLOG_INFO, "========================================\n");
     MfsChangelogs changelogs = mfsPackageGetChangelogs(pkg);
 
     MfsChangelog entry = mfsChangelogNew();
@@ -213,8 +249,9 @@ void print_pkginfo(MfsPackage pkg)
 	free(name);
 	free(time);
     }
-
     mfsChangelogsFree(changelogs);
+    }
+    rpmlog(RPMLOG_INFO, "\n");
 }
 
 rpmRC parserfunc_pkgsinfo(MfsContext context)

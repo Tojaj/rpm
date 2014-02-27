@@ -130,6 +130,14 @@ struct MfsDeps_s {
     struct MfsDep_s *entries;
 };
 
+struct MfsFileLines_s {
+    ARGV_t filelines;
+};
+
+struct MfsFileFiles_s {
+    ARGV_t filefiles;
+};
+
 struct MfsFile_s {
     struct FileListRec_s *flr;
     const char *diskpath;
