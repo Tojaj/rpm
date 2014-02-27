@@ -116,6 +116,10 @@ typedef enum MfsDepType_e {
     MFS_DEP_TYPE_OBSOLETES,
     MFS_DEP_TYPE_TRIGGERS,
     MFS_DEP_TYPE_ORDER,
+    MFS_DEP_TYPE_RECOMMENDS,
+    MFS_DEP_TYPE_SUGGESTS,
+    MFS_DEP_TYPE_SUPPLEMENTS,
+    MFS_DEP_TYPE_ENHANCES,
     MFS_DEP_TYPE_SENTINEL   /*!< The last element of the list */
 } MfsDepType;
 

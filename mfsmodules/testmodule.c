@@ -11,6 +11,10 @@ typedef const struct DepType_s {
 
 static struct DepType_s const deptypes[] = {
     { MFS_DEP_TYPE_REQUIRES,	"Requires" },
+    { MFS_DEP_TYPE_RECOMMENDS,	"Recommends" },
+    { MFS_DEP_TYPE_SUGGESTS,	"Suggests" },
+    { MFS_DEP_TYPE_SUPPLEMENTS, "Supplements" },
+    { MFS_DEP_TYPE_ENHANCES,	"Enhances" },
     { MFS_DEP_TYPE_PROVIDES,	"Provides" },
     { MFS_DEP_TYPE_CONFLICTS,	"Conflicts" },
     { MFS_DEP_TYPE_OBSOLETES,	"Obsoletes" },
