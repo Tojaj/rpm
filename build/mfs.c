@@ -854,6 +854,11 @@ rpmRC mfsSpecSetScript(MfsSpec spec, MfsBTScript script, MfsBTScriptType type)
     return rc;
 }
 
+void mfsSpecFree(MfsSpec spec)
+{
+    free(spec);
+}
+
 void mfsBTScriptFree(MfsBTScript script)
 {
     if (!script)
@@ -889,6 +894,14 @@ rpmRC mfsBTScriptAppendLine(MfsBTScript script, const char *code)
  */
 
 // Package
+
+void mfsPackageFree(MfsPackage pkg)
+{
+    if (pkg) {
+	free(pkg->fullname);
+        free(pkg);
+    }
+}
 
 MfsPackage mfsPackageNew(MfsContext context,
 			 const char *name,

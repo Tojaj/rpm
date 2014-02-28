@@ -97,7 +97,6 @@ struct MfsPackage_s {
     Package pkg;
     char *fullname;
     rpmSpec spec;
-    struct MfsPackage_s *next;
 };
 
 struct MfsScript_s {

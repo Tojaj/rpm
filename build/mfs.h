@@ -194,6 +194,7 @@ MfsPackage mfsSpecGetPackage(MfsSpec spec, int index);
 MfsPackage mfsSpecGetSourcePackage(MfsSpec spec);
 MfsBTScript mfsSpecGetScript(MfsSpec spec, MfsBTScriptType type);
 rpmRC mfsSpecSetScript(MfsSpec spec, MfsBTScript script, MfsBTScriptType type);
+void mfsSpecFree(MfsSpec spec);
 
 void mfsBTScriptFree(MfsBTScript script);
 char *mfsBTScriptGetCode(MfsBTScript script);
@@ -203,6 +204,7 @@ rpmRC mfsBTScriptAppendLine(MfsBTScript script, const char *code);
 
 // Add Package Hook Related API
 
+void mfsPackageFree(MfsPackage pkg);
 MfsPackage mfsPackageNew(MfsContext context,
 			 const char *name,
 			 const char *summary,
