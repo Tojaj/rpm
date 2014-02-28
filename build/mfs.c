@@ -654,6 +654,19 @@ MfsSpec mfsSpecFromContext(MfsContext context)
     return mfsspec;
 }
 
+MfsSpec mfsSpecFromPackage(MfsPackage pkg)
+{
+    MfsSpec mfsspec;
+
+    if (!pkg || !pkg->spec)
+	return NULL;
+
+    mfsspec = xcalloc(1, sizeof(*mfsspec));
+    mfsspec->rpmspec = pkg->spec;
+
+    return mfsspec;
+}
+
 char * mfsSpecGetString(MfsSpec spec, MfsSpecAttr attr)
 {
     const char *ptr;

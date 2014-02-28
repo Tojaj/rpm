@@ -187,6 +187,7 @@ void mfsSetContextData(MfsContext context, void *data);
 // Spec manipulation API
 
 MfsSpec mfsSpecFromContext(MfsContext context);
+MfsSpec mfsSpecFromPackage(MfsPackage pkg);
 char * mfsSpecGetString(MfsSpec spec, MfsSpecAttr attr);
 rpmRC mfsSpecSetString(MfsSpec spec, MfsSpecAttr attr, const char *str);
 int mfsSpecPackageCount(MfsSpec spec);
