@@ -123,6 +123,18 @@ typedef enum MfsDepType_e {
     MFS_DEP_TYPE_SENTINEL   /*!< The last element of the list */
 } MfsDepType;
 
+// Helper functions
+
+void mfslog(MfsContext context, int code, const char *fmt, ...);
+#define mfslog_debug(context, ...)   mfslog(context, RPMLOG_DEBUG, __VA_ARGS__)
+#define mfslog_info(context, ...)    mfslog(context, RPMLOG_INFO, __VA_ARGS__)
+#define mfslog_notice(context, ...)  mfslog(context, RPMLOG_NOTICE, __VA_ARGS__)
+#define mfslog_warning(context, ...) mfslog(context, RPMLOG_WARNING, __VA_ARGS__)
+#define mfslog_err(context, ...)     mfslog(context, RPMLOG_ERR, __VA_ARGS__)
+#define mfslog_crit(context, ...)    mfslog(context, RPMLOG_CRIT, __VA_ARGS__)
+#define mfslog_alert(context, ...)   mfslog(context, RPMLOG_ALERT, __VA_ARGS__)
+#define mfslog_emerg(context, ...)   mfslog(context, RPMLOG_EMERG, __VA_ARGS__)
+
 // Module initialization related API
 
 /* Priority is number between 0-10000

@@ -59,6 +59,37 @@ static void argvDelete(ARGV_t argv, int i)
 	argv[x] = argv[x+1];
 }
 
+void mfslog(MfsContext context, int code, const char *fmt, ...)
+{
+    va_list ap;
+    int n;
+
+    va_start(ap, fmt);
+    n = vsnprintf(NULL, 0, fmt, ap);
+    va_end(ap);
+
+    if (n >= -1) {
+	char *msg_format, *msg;
+	size_t nb = n;
+
+        nb += strlen(context->modulename) + 2 + 1; // modulename + ": " + '\0'
+	msg = xmalloc(nb);
+	msg_format = xmalloc(nb);
+
+	strcpy(msg_format, context->modulename);
+	strcat(msg_format, ": ");
+	strcat(msg_format, fmt);
+
+	va_start(ap, fmt);
+	vsnprintf(msg, nb, msg_format, ap);
+	va_end(ap);
+
+	free(msg_format);
+	rpmlog(code, msg);
+	free(msg);
+    }
+}
+
 /*
  * Module manager related functions
  */
