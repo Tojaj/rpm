@@ -5,6 +5,7 @@
 #include <lib/rpmtypes.h>
 #include <lib/rpmfiles.h>
 #include <rpm/rpmvf.h>
+#include <rpm/rpmmacro.h>
 
 /** \ingroup mfs
  * \file build/mfs.h
@@ -193,6 +194,11 @@ rpmRC mfsSpecSetString(MfsSpec spec, MfsSpecAttr attr, const char *str);
 int mfsSpecPackageCount(MfsSpec spec);
 MfsPackage mfsSpecGetPackage(MfsSpec spec, int index);
 MfsPackage mfsSpecGetSourcePackage(MfsSpec spec);
+/*
+ * @returns	    Pointer to the actual spec's macro context.
+ *		    Do not free the context!
+ */
+rpmMacroContext mfsSpecGetMacroContext(MfsSpec spec);
 MfsBTScript mfsSpecGetScript(MfsSpec spec, MfsBTScriptType type);
 rpmRC mfsSpecSetScript(MfsSpec spec, MfsBTScript script, MfsBTScriptType type);
 void mfsSpecFree(MfsSpec spec);

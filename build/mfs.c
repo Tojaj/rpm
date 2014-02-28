@@ -800,6 +800,12 @@ MfsPackage mfsSpecGetSourcePackage(MfsSpec spec)
     return mfspackage;
 }
 
+rpmMacroContext mfsSpecGetMacroContext(MfsSpec spec)
+{
+    assert(spec && spec->rpmspec);
+    return spec->rpmspec->macros;
+}
+
 MfsBTScript mfsSpecGetScript(MfsSpec spec, MfsBTScriptType type)
 {
     assert(spec && spec->rpmspec);
