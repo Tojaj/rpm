@@ -35,6 +35,28 @@ typedef struct MfsModuleLoadState_s {
  * Helper functions
  */
 
+static const char *hookPointToStr(MfsHookPoint point)
+{
+    switch (point) {
+	case MFS_HOOK_POINT_POSTPARSE:
+	    return "postparse";
+	case MFS_HOOK_POINT_POSTPREP:
+	    return "postprep";
+	case MFS_HOOK_POINT_POSTBUILD:
+	    return "postbuild";
+	case MFS_HOOK_POINT_POSTINTALL:
+	    return "postinstall";
+	case MFS_HOOK_POINT_POSTCHECK:
+	    return "postcheck";
+	case MFS_HOOK_POINT_FINAL:
+	    return "postfinal";
+	default:
+	    break;
+    }
+
+    return "UNKNOWN";
+}
+
 static inline char *mstrdup(const char *str)
 {
     if (!str) return NULL;
@@ -477,9 +499,11 @@ rpmRC mfsManagerCallBuildHooks(MfsManager mm, rpmSpec cur_spec, MfsHookPoint poi
 
 	// Logging
 	if (hook->prettyname)
-	    mfslog_info(context, "Calling hook: %s\n", hook->prettyname);
+	    mfslog_info(context, "Calling hook: %s at %s\n",
+			hook->prettyname, hookPointToStr(point));
         else
-	    mfslog_info(context, "Calling hook: %p (no prettyname set)\n", hook->func);
+	    mfslog_info(context, "Calling hook: %p (no prettyname set) at %s\n",
+			hook->func, hookPointToStr(point));
 
 	// Call the hook
         if ((rc = func(context)) != RPMRC_OK) {
