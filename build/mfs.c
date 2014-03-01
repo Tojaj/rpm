@@ -475,6 +475,12 @@ rpmRC mfsManagerCallBuildHooks(MfsManager mm, rpmSpec cur_spec, MfsHookPoint poi
 	context = mfsModuleContextGetContext(modulecontext, cur_spec);
 	context->state = MFS_CTXSTATE_PARSERHOOK;
 
+	// Logging
+	if (hook->prettyname)
+	    mfslog_info(context, "Calling hook: %s\n", hook->prettyname);
+        else
+	    mfslog_info(context, "Calling hook: %p (no prettyname set)\n", hook->func);
+
 	// Call the hook
         if ((rc = func(context)) != RPMRC_OK) {
 	    rpmlog(RPMLOG_ERR, _("Module %s returned an error from parsehook\n"),
@@ -558,6 +564,14 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
 	// Prepare the context
 	context = mfsModuleContextGetContext(modulecontext, cur_spec);
 	context->state = MFS_CTXSTATE_FILEHOOK;
+
+	// Logging
+	if (hook->prettyname)
+	    mfslog_info(context, "Calling hook: %s for: %s\n",
+		        hook->prettyname, rec->diskPath);
+        else
+	    mfslog_info(context, "Calling hook: %p (no prettyname set) for: %s\n",
+			hook->func, rec->diskPath);
 
 	// Call the hook
         if ((rc = func(context, mfsfile)) != RPMRC_OK) {
