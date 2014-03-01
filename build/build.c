@@ -313,6 +313,10 @@ static rpmRC buildSpec(BTA_t buildArgs, rpmSpec spec, int what)
 	(void) unlink(spec->specFile);
 
 exit:
+
+    if ((rc = mfsManagerCallBuildHooks(mm, spec, MFS_HOOK_POINT_FINAL)) != RPMRC_OK)
+	goto exit;
+
     mfsManagerFree(mm);
     mfsUnloadModules(modules);
     free(cookie);

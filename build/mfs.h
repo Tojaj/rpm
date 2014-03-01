@@ -59,6 +59,7 @@ typedef enum MfsHookPoint_e {
     MFS_HOOK_POINT_POSTBUILD,
     MFS_HOOK_POINT_POSTINTALL,
     MFS_HOOK_POINT_POSTCHECK,
+    MFS_HOOK_POINT_FINAL,
     MFS_HOOK_POINT_SENTINEL /*!< The last element of the list */
 } MfsHookPoint;
 
