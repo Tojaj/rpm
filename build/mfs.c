@@ -231,13 +231,15 @@ static void mfsManagerSortHooks(MfsManager mfsm)
     // Debug output
     rpmlog(RPMLOG_INFO, _("Registered BuildHooks:\n"));
     for (MfsBuildHook cur = mfsm->buildhooks; cur; cur = cur->next)
-        rpmlog(RPMLOG_INFO, _("- Module %s registered BuildHook %p (%d)\n"),
-                cur->modulecontext->modulename, cur->func, cur->priority);
+        rpmlog(RPMLOG_INFO, _("- Module %s registered BuildHook %p - %s (%d)\n"),
+                cur->modulecontext->modulename, cur->func,
+		cur->prettyname ? cur->prettyname : "no prettyname", cur->priority);
 
     rpmlog(RPMLOG_INFO, _("Registered FileHooks:\n"));
     for (MfsFileHook cur = mfsm->filehooks; cur; cur = cur->next)
-        rpmlog(RPMLOG_INFO, _("- Module %s registered FileHook %p (%d)\n"),
-                cur->modulecontext->modulename, cur->func, cur->priority);
+        rpmlog(RPMLOG_INFO, _("- Module %s registered FileHook %p - %s (%d)\n"),
+                cur->modulecontext->modulename, cur->func,
+		cur->prettyname ? cur->prettyname : "no prettyname", cur->priority);
 }
 
 /* Insert (move) the current context the internal list of contexts.
