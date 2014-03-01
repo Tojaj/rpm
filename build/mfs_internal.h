@@ -9,6 +9,7 @@
 extern "C" {
 #endif
 
+#define LOGPREFIX	"mfs: "
 #define MFSMODULESDIR   "mfsmodules"
 
 typedef struct MfsModuleContext_s * MfsModuleContext;

@@ -186,7 +186,7 @@ rpmRC setupPkgsFunc(MfsContext context)
     MfsSpec spec = mfsContextGetSpec(context);
 
     if (!spec) {
-	mfslog_err(context, "Cannot get spec from context\n");
+	mfslog_err("Cannot get spec from context\n");
 	goto exit;
     }
 
@@ -198,7 +198,7 @@ rpmRC setupPkgsFunc(MfsContext context)
     for (int x=0; x < mfsSpecPackageCount(spec); x++) {
 	MfsPackage pkg = mfsSpecGetPackage(spec, x);
 	if (!pkg) {
-	    mfslog_err(context, "Cannot get package from spec\n");
+	    mfslog_err("Cannot get package from spec\n");
 	    goto exit;
 	}
 	findLanguages(pkg, &langs);
@@ -211,7 +211,7 @@ rpmRC setupPkgsFunc(MfsContext context)
 	char name[64];
 	LangPkg langpkg;
 
-	mfslog_info(context, "Adding subpackage for lang: %s\n", langs[x]);
+	mfslog_info("Adding subpackage for lang: %s\n", langs[x]);
 	snprintf(name, 64, "lang-%s", langs[x]);
 	pkg = mfsPackageNew(context, name, "Language subpackage",
 			    MFS_PACKAGE_FLAG_SUBNAME);
@@ -260,7 +260,7 @@ rpmRC fileFunc(MfsContext context, MfsFile file)
 	    include_in_original = 1;
 	    continue;
 	}
-	mfslog_info(context, "Langsubpackage for \"%s\" will contain: %s\n",
+	mfslog_info("Langsubpackage for \"%s\" will contain: %s\n",
 		    langs[x], mfsFileGetPath(file));
 	mfsPackageAddFile(pkg, file);
     }

@@ -20,6 +20,7 @@
 #include "debug.h"
 
 #define TIME_STR_BUF	50
+#define STATICSTRLEN(s) (sizeof(s)/sizeof(s[0]))
 
 typedef struct MfsDlopenHandleList_s {
     void *handle;
@@ -81,7 +82,7 @@ static void argvDelete(ARGV_t argv, int i)
 	argv[x] = argv[x+1];
 }
 
-void mfslog(MfsContext context, int code, const char *fmt, ...)
+void mfslog(int code, const char *fmt, ...)
 {
     va_list ap;
     int n;
@@ -92,15 +93,12 @@ void mfslog(MfsContext context, int code, const char *fmt, ...)
 
     if (n >= -1) {
 	char *msg_format, *msg;
-	size_t nb = n;
+	size_t nb = n + STATICSTRLEN(LOGPREFIX); // '\0' is included
 
-	// modulename + ": " + '\0'
-        nb += strlen(context->modulecontext->modulename) + 2 + 1;
 	msg = xmalloc(nb);
 	msg_format = xmalloc(nb);
 
-	strcpy(msg_format, context->modulecontext->modulename);
-	strcat(msg_format, ": ");
+	strcpy(msg_format, LOGPREFIX);
 	strcat(msg_format, fmt);
 
 	va_start(ap, fmt);
@@ -229,17 +227,17 @@ static void mfsManagerSortHooks(MfsManager mfsm)
     }
 
     // Debug output
-    rpmlog(RPMLOG_INFO, _("Registered BuildHooks:\n"));
+    mfslog_info(_("Registered BuildHooks:\n"));
     for (MfsBuildHook cur = mfsm->buildhooks; cur; cur = cur->next)
-        rpmlog(RPMLOG_INFO, _("- Module %s registered BuildHook %p - %s (%d)\n"),
-                cur->modulecontext->modulename, cur->func,
-		cur->prettyname ? cur->prettyname : "no prettyname", cur->priority);
+        mfslog_info(_("- Module %s registered BuildHook %p - %s (%d)\n"),
+		    cur->modulecontext->modulename, cur->func,
+		    cur->prettyname ? cur->prettyname : "no prettyname", cur->priority);
 
-    rpmlog(RPMLOG_INFO, _("Registered FileHooks:\n"));
+    mfslog_info(_("Registered FileHooks:\n"));
     for (MfsFileHook cur = mfsm->filehooks; cur; cur = cur->next)
-        rpmlog(RPMLOG_INFO, _("- Module %s registered FileHook %p - %s (%d)\n"),
-                cur->modulecontext->modulename, cur->func,
-		cur->prettyname ? cur->prettyname : "no prettyname", cur->priority);
+        mfslog_info(_("- Module %s registered FileHook %p - %s (%d)\n"),
+		    cur->modulecontext->modulename, cur->func,
+		    cur->prettyname ? cur->prettyname : "no prettyname", cur->priority);
 }
 
 /* Insert (move) the current context the internal list of contexts.
@@ -368,7 +366,7 @@ static void *loadModule(const char *name, const char *fullpath,
     handle = dlopen(slashedpath, RTLD_NOW);
     free(slashedpath);
     if (!handle) {
-	rpmlog(RPMLOG_ERR, _("Error while loading module %s: %s\n"),
+	mfslog_err(_("Error while loading module %s: %s\n"),
 	       fullpath, dlerror());
         return NULL;
     }
@@ -378,7 +376,7 @@ static void *loadModule(const char *name, const char *fullpath,
     free(initfunc_name);
 
     if (!initfunc) {
-	rpmlog(RPMLOG_ERR, _("Error while loading init function "
+	mfslog_err(_("Error while loading init function "
                "of module %s: %s\n"), fullpath, dlerror());
         dlclose(handle);
         return NULL;
@@ -391,7 +389,7 @@ static void *loadModule(const char *name, const char *fullpath,
     // Init the module
     rc = initfunc(mfsm);
     if (rc < 0) {
-        rpmlog(RPMLOG_ERR, _("Error: Init function of %s returned %d\n"),
+        mfslog_err(_("Error: Init function of %s returned %d\n"),
 		fullpath, rc);
         dlclose(handle);
         mfsModuleContextFree(mcontext);
@@ -402,7 +400,7 @@ static void *loadModule(const char *name, const char *fullpath,
     // Insert the current context to the manager's list of contexts
     mfsManagerUseCurrentContext(mfsm);
 
-    rpmlog(RPMLOG_NOTICE, _("Loaded module: %s\n"), fullpath);
+    mfslog_info(_("Loaded module: %s\n"), fullpath);
 
     return handle;
 }
@@ -417,7 +415,7 @@ rpmRC mfsLoadModules(void **modules, const char *path, MfsManager mfsm)
 
     DIR *dir = opendir(path);
     if (!dir) {
-	rpmlog(RPMLOG_ERR, _("Could not open directory %s: %m\n"), path);
+	mfslog_err(_("Could not open directory %s: %m\n"), path);
         return RPMRC_FAIL;
     }
 
@@ -502,15 +500,15 @@ rpmRC mfsManagerCallBuildHooks(MfsManager mm, rpmSpec cur_spec, MfsHookPoint poi
 
 	// Logging
 	if (hook->prettyname)
-	    mfslog_info(context, "Calling hook: %s at %s\n",
+	    mfslog_info(_("Calling hook: %s at %s\n"),
 			hook->prettyname, hookPointToStr(point));
         else
-	    mfslog_info(context, "Calling hook: %p (no prettyname set) at %s\n",
+	    mfslog_info(_("Calling hook: %p (no prettyname set) at %s\n"),
 			hook->func, hookPointToStr(point));
 
 	// Call the hook
         if ((rc = func(context)) != RPMRC_OK) {
-	    rpmlog(RPMLOG_ERR, _("Module %s returned an error from parsehook\n"),
+	    mfslog_err(_("Module %s returned an error from parsehook\n"),
 		   hook->modulecontext->modulename);
             break;
 	}
@@ -594,15 +592,15 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
 
 	// Logging
 	if (hook->prettyname)
-	    mfslog_info(context, "Calling hook: %s for: %s\n",
+	    mfslog_info(_("Calling hook: %s for: %s\n"),
 		        hook->prettyname, rec->diskPath);
         else
-	    mfslog_info(context, "Calling hook: %p (no prettyname set) for: %s\n",
+	    mfslog_info(_("Calling hook: %p (no prettyname set) for: %s\n"),
 			hook->func, rec->diskPath);
 
 	// Call the hook
         if ((rc = func(context, mfsfile)) != RPMRC_OK) {
-	    rpmlog(RPMLOG_ERR, _("Module %s returned an error from filehook\n"),
+	    mfslog_err(_("Module %s returned an error from filehook\n"),
 		   hook->modulecontext->modulename);
             break;
 	}
@@ -1031,11 +1029,11 @@ MfsPackage mfsPackageNew(MfsContext context,
     Package pkg;
 
     if (context->state != MFS_CTXSTATE_BUILDHOOK) {
-	rpmlog(RPMLOG_ERR, _("Packages must be added in a build hook. "
+	mfslog_err(_("Packages must be added in a build hook. "
 			     "Cannot add: %s\n"), name);
 	return NULL;
     } else if (context->lastpoint > MFS_HOOK_POINT_POSTCHECK) {
-	rpmlog(RPMLOG_ERR, _("Packages cannot be added after at this point "
+	mfslog_err(_("Packages cannot be added after at this point "
 			     "of process. Cannot add: %s\n"), name);
 	return NULL;
     }
@@ -1044,7 +1042,7 @@ MfsPackage mfsPackageNew(MfsContext context,
         // This should be a first package
         // Spec doesn't have defined any packages - nothing to do
         // This is an artificial limitation
-        rpmlog(RPMLOG_ERR, _("No main package exist. Cannot add: %s\n"), name);
+        mfslog_err(_("No main package exist. Cannot add: %s\n"), name);
         return NULL;
     }
 
@@ -1052,7 +1050,7 @@ MfsPackage mfsPackageNew(MfsContext context,
         flag = PART_SUBNAME;
 
     if (!lookupPackage(spec, name, flag, NULL)) {
-        rpmlog(RPMLOG_ERR, _("Package already exists: %s\n"), name);
+        mfslog_err(_("Package already exists: %s\n"), name);
         return NULL;
     }
 
@@ -1103,7 +1101,7 @@ rpmRC mfsPackageSetTag(MfsPackage pkg,
     PreambleRec p;
 
     if (!value) {
-	rpmlog(RPMLOG_ERR, _("No value specified for tag %d\n"), tag);
+	mfslog_err(_("No value specified for tag %d\n"), tag);
 	return RPMRC_FAIL;
     }
 
@@ -1113,18 +1111,18 @@ rpmRC mfsPackageSetTag(MfsPackage pkg,
 	    break;
 
     if (!p || !p->token) {
-	rpmlog(RPMLOG_ERR, _("Unknown/Unsupported tag (%d)\n"), tag);
+	mfslog_err(_("Unknown/Unsupported tag (%d)\n"), tag);
 	return RPMRC_FAIL;
     }
 
     macro = p->token;
 
     if (p->deprecated)
-	rpmlog(RPMLOG_WARNING, _("Tag %d: %s is deprecated\n"), tag, macro);
+	mfslog_warning(_("Tag %d: %s is deprecated\n"), tag, macro);
 
     if (p->type == 0) {
 	if (opt && *opt)
-	    rpmlog(RPMLOG_WARNING, _("Tag %d: %s doesn't support additional "
+	    mfslog_warning(_("Tag %d: %s doesn't support additional "
 		  "info \"%s\""), tag, macro, opt);
 	opt = "";
     } else if (p->type == 1) {
@@ -1194,7 +1192,7 @@ MfsScript mfsPackageGetScript(MfsPackage pkg, MfsScriptType type)
 	    }
 	    if (prog && *prog == ' ') prog++;
 	} else {
-	    rpmlog(RPMLOG_ERR, _("Unexpected type of data for tag %d\n"), rec->progtag);
+	    mfslog_err(_("Unexpected type of data for tag %d\n"), rec->progtag);
 	    goto get_script_end;
 	}
 
@@ -1264,14 +1262,14 @@ rpmRC mfsPackageSetScript(MfsPackage pkg, MfsScript script, MfsScriptType type)
     // Sanity checks first
 
     if (!script->prog || *script->prog == '\0') {
-	rpmlog(RPMLOG_ERR, _("script program must be set\n"));
+	mfslog_err(_("script program must be set\n"));
 	return RPMRC_FAIL;
     }
 
     if (*script->prog == '<') {
 	// Internal script specified
 	if (script->prog[strlen(script->prog)-1] != '>') {
-	    rpmlog(RPMLOG_ERR, _("internal script must end with \'>\': %s\n"),
+	    mfslog_err(_("internal script must end with \'>\': %s\n"),
 		    script->prog);
 	    return RPMRC_FAIL;
 	}
@@ -1284,19 +1282,19 @@ rpmRC mfsPackageSetScript(MfsPackage pkg, MfsScript script, MfsScriptType type)
 	} else
 #endif
 	{
-	    rpmlog(RPMLOG_ERR, _("unsupported internal script: %s\n"), script->prog);
+	    mfslog_err(_("unsupported internal script: %s\n"), script->prog);
 	    return RPMRC_FAIL;
 	}
     } else if (*script->prog != '/') {
 	// External script program must starts with '/'
-	rpmlog(RPMLOG_ERR, _("script program must begin with \'/\': %s\n"),
+	mfslog_err(_("script program must begin with \'/\': %s\n"),
 		script->prog);
 	return RPMRC_FAIL;
     }
 
     // Parse the prog argument
     if ((popt_rc = poptParseArgvString(script->prog, &progArgc, &progArgv))) {
-	rpmlog(RPMLOG_ERR, _("error parsing %s: %s\n"),
+	mfslog_err(_("error parsing %s: %s\n"),
 	       script->prog, poptStrerror(popt_rc));
 	rc = RPMRC_FAIL;
 	goto set_script_end;
@@ -1429,7 +1427,7 @@ MfsChangelogs mfsPackageGetChangelogs(MfsPackage pkg)
 	const char *text = rpmtdGetString(changelogtexts);
 
 	if (!time || !name || !text) {
-	    rpmlog(RPMLOG_ERR, _("Cannot retrieve changelog entries\n"));
+	    mfslog_err(_("Cannot retrieve changelog entries\n"));
 	    goto get_changelog_end;
 	}
 
@@ -1472,7 +1470,7 @@ rpmRC mfsPackageSetChangelogs(MfsPackage pkg, MfsChangelogs changelogs)
 
     for (MfsChangelog e = changelogs->entries; e; e = e->next) {
 	if (!e->name || !e->text) {
-	    rpmlog(RPMLOG_WARNING, _("Invalid changelog entry skipped\n"));
+	    mfslog_warning(_("Invalid changelog entry skipped\n"));
 	    continue;
 	}
 	addChangelogEntry(hdr, e->time, e->name, e->text);
@@ -1548,7 +1546,7 @@ MfsDeps mfsPackageGetDeps(MfsPackage pkg, MfsDepType deptype)
 	}
 
 	if (!name || !version || !flags || (indextag && !index)) {
-	    rpmlog(RPMLOG_ERR, _("Cannot retrieve dependency\n"));
+	    mfslog_err(_("Cannot retrieve dependency\n"));
 	    goto get_deps_end;
 	}
 
@@ -1626,27 +1624,27 @@ rpmRC mfsPackageSetDeps(MfsPackage pkg, MfsDeps deps, MfsDepType deptype)
     // Set the new dependencies
     for (MfsDep e = deps->entries; e; e = e->next) {
 	if (!e->name) {
-	    rpmlog(RPMLOG_ERR, _("invalid dependency - Missing name\n"));
+	    mfslog_err(_("invalid dependency - Missing name\n"));
 	    rc = RPMRC_FAIL;
 	    goto pkg_set_dep_error;
 	}
 
 	if (e->flags & RPMSENSE_SENSEMASK && !e->version) {
-	    rpmlog(RPMLOG_ERR, _("invalid dependency - Version required: "
+	    mfslog_err(_("invalid dependency - Version required: "
 			"%s (%d)\n"), e->name, e->flags);
 	    rc = RPMRC_FAIL;
 	    goto pkg_set_dep_error;
 	}
 
 	if (!(e->flags & RPMSENSE_SENSEMASK) && e->version && *e->version != '\0') {
-	    rpmlog(RPMLOG_ERR, _("invalid dependency - Redundant version: "
+	    mfslog_err(_("invalid dependency - Redundant version: "
 			"%s %s (%d)\n"), e->name, e->version, e->flags);
 	    rc = RPMRC_FAIL;
 	    goto pkg_set_dep_error;
 	}
 
 	if (e->index && !indextag) {
-	    rpmlog(RPMLOG_WARNING, _("index attribute has no effect: %s\n"),
+	    mfslog_warning(_("index attribute has no effect: %s\n"),
 			e->name);
 	}
 
@@ -1812,7 +1810,7 @@ rpmRC mfsChangelogsInsert(MfsChangelogs changelogs,
     MfsChangelog cur_entry = changelogs->entries;
 
     if (!entry->name || !entry->text) {
-	rpmlog(RPMLOG_ERR, _("Incomplete changelog entry\n"));
+	mfslog_err(_("Incomplete changelog entry\n"));
 	return RPMRC_FAIL;
     }
 
@@ -1844,7 +1842,7 @@ rpmRC mfsChangelogsInsert(MfsChangelogs changelogs,
 
 changelog_entry_insert_error:
 
-    rpmlog(RPMLOG_ERR, _("Changelog entry cannot be inserted to the specified index\n"));
+    mfslog_err(_("Changelog entry cannot be inserted to the specified index\n"));
     return RPMRC_FAIL;
 }
 
@@ -1884,7 +1882,7 @@ rpmRC mfsChangelogsDelete(MfsChangelogs changelogs, int index)
 
 changelog_entry_delete_error:
 
-    rpmlog(RPMLOG_ERR, _("Changelog entry doesn't exist\n"));
+    mfslog_err(_("Changelog entry doesn't exist\n"));
     return RPMRC_FAIL;
 }
 
@@ -1971,7 +1969,7 @@ rpmRC mfsChangelogSetDateStr(MfsChangelog entry, const char *date)
     assert(date);
     time_t time;
     if (rpmDateToTimet(date, &time) == -1) {
-	rpmlog(RPMLOG_ERR, "Cannot convert \"%s\" to time\n", date);
+	mfslog_err("Cannot convert \"%s\" to time\n", date);
 	return RPMRC_FAIL;
     }
     return mfsChangelogSetDate(entry, time);
@@ -2040,7 +2038,7 @@ rpmRC mfsDepsInsert(MfsDeps deps, MfsDep entry, int index)
     MfsDep cur_entry = deps->entries;
 
     if (!entry->name) {
-	rpmlog(RPMLOG_ERR, _("Incomplete dependency\n"));
+	mfslog_err(_("Incomplete dependency\n"));
 	return RPMRC_FAIL;
     }
 
@@ -2072,7 +2070,7 @@ rpmRC mfsDepsInsert(MfsDeps deps, MfsDep entry, int index)
 
 deps_entry_insert_error:
 
-    rpmlog(RPMLOG_ERR, _("Dependency cannot be inserted to the specified index\n"));
+    mfslog_err(_("Dependency cannot be inserted to the specified index\n"));
     return RPMRC_FAIL;
 }
 
@@ -2112,7 +2110,7 @@ rpmRC mfsDepsDelete(MfsDeps deps, int index)
 
 deps_entry_delete_error:
 
-    rpmlog(RPMLOG_ERR, _("Deps entry doesn't exist\n"));
+    mfslog_err(_("Deps entry doesn't exist\n"));
     return RPMRC_FAIL;
 }
 
@@ -2343,7 +2341,7 @@ rpmRC mfsPackageAddFile(MfsPackage pkg, MfsFile file)
     FileList fl = pkg->pkg->fl;
 
     if (fl == NULL) {
-	rpmlog(RPMLOG_ERR, _("Cannot append file to the package"));
+	mfslog_err(_("Cannot append file to the package"));
 	return RPMRC_FAIL;
     }
 
@@ -2376,7 +2374,7 @@ rpmRC mfsFileSetStat(MfsFile file, struct stat *st)
 {
     assert(file);
     if (!st) {
-	rpmlog(RPMLOG_ERR, _("Pointer to stat struct is NULL"));
+	mfslog_err(_("Pointer to stat struct is NULL"));
 	return RPMRC_FAIL;
     }
     file->flr->fl_st = *st;

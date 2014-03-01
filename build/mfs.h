@@ -127,15 +127,15 @@ typedef enum MfsDepType_e {
 
 // Helper functions
 
-void mfslog(MfsContext context, int code, const char *fmt, ...);
-#define mfslog_debug(context, ...)   mfslog(context, RPMLOG_DEBUG, __VA_ARGS__)
-#define mfslog_info(context, ...)    mfslog(context, RPMLOG_INFO, __VA_ARGS__)
-#define mfslog_notice(context, ...)  mfslog(context, RPMLOG_NOTICE, __VA_ARGS__)
-#define mfslog_warning(context, ...) mfslog(context, RPMLOG_WARNING, __VA_ARGS__)
-#define mfslog_err(context, ...)     mfslog(context, RPMLOG_ERR, __VA_ARGS__)
-#define mfslog_crit(context, ...)    mfslog(context, RPMLOG_CRIT, __VA_ARGS__)
-#define mfslog_alert(context, ...)   mfslog(context, RPMLOG_ALERT, __VA_ARGS__)
-#define mfslog_emerg(context, ...)   mfslog(context, RPMLOG_EMERG, __VA_ARGS__)
+void mfslog(int code, const char *fmt, ...);
+#define mfslog_debug(...)   mfslog(RPMLOG_DEBUG, __VA_ARGS__)
+#define mfslog_info(...)    mfslog(RPMLOG_INFO, __VA_ARGS__)
+#define mfslog_notice(...)  mfslog(RPMLOG_NOTICE, __VA_ARGS__)
+#define mfslog_warning(...) mfslog(RPMLOG_WARNING, __VA_ARGS__)
+#define mfslog_err(...)     mfslog(RPMLOG_ERR, __VA_ARGS__)
+#define mfslog_crit(...)    mfslog(RPMLOG_CRIT, __VA_ARGS__)
+#define mfslog_alert(...)   mfslog(RPMLOG_ALERT, __VA_ARGS__)
+#define mfslog_emerg(...)   mfslog(RPMLOG_EMERG, __VA_ARGS__)
 
 // Module initialization related API
 
