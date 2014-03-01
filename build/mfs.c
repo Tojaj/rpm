@@ -36,25 +36,17 @@ typedef struct MfsModuleLoadState_s {
  * Helper functions
  */
 
-static const char *hookPointToStr(MfsHookPoint point)
+static const char *enumHookPointValToStr(MfsHookPoint point)
 {
     switch (point) {
-	case MFS_HOOK_POINT_POSTPARSE:
-	    return "postparse";
-	case MFS_HOOK_POINT_POSTPREP:
-	    return "postprep";
-	case MFS_HOOK_POINT_POSTBUILD:
-	    return "postbuild";
-	case MFS_HOOK_POINT_POSTINTALL:
-	    return "postinstall";
-	case MFS_HOOK_POINT_POSTCHECK:
-	    return "postcheck";
-	case MFS_HOOK_POINT_FINAL:
-	    return "postfinal";
-	default:
-	    break;
+    case MFS_HOOK_POINT_POSTPARSE:  return "postparse";
+    case MFS_HOOK_POINT_POSTPREP:   return "postprep";
+    case MFS_HOOK_POINT_POSTBUILD:  return "postbuild";
+    case MFS_HOOK_POINT_POSTINTALL: return "postinstall";
+    case MFS_HOOK_POINT_POSTCHECK:  return "postcheck";
+    case MFS_HOOK_POINT_FINAL:      return "postfinal";
+    default: break;
     }
-
     return "UNKNOWN";
 }
 
@@ -502,10 +494,10 @@ rpmRC mfsManagerCallBuildHooks(MfsManager mm, rpmSpec cur_spec, MfsHookPoint poi
 	// Logging
 	if (hook->prettyname)
 	    mfslog_info(_("Calling hook: %s at %s\n"),
-			hook->prettyname, hookPointToStr(point));
+			hook->prettyname, enumHookPointValToStr(point));
         else
 	    mfslog_info(_("Calling hook: %p (no prettyname set) at %s\n"),
-			hook->func, hookPointToStr(point));
+			hook->func, enumHookPointValToStr(point));
 
 	// Call the hook
         if ((rc = func(context)) != RPMRC_OK) {
