@@ -115,12 +115,14 @@ void mfsManagerFree(MfsManager mm)
 
     for (MfsBuildHook bh=mm->buildhooks; bh;) {
 	MfsBuildHook next = bh->next;
+	free(bh->prettyname);
 	free(bh);
 	bh = next;
     }
 
     for (MfsFileHook fh=mm->filehooks; fh;) {
 	MfsFileHook next = fh->next;
+	free(fh->prettyname);
 	for (MfsGlob glob=fh->globs; glob;) {
 	    MfsGlob next = glob->next;
 	    free(glob->glob);
@@ -606,6 +608,13 @@ rpmRC mfsBuildHookSetPriority(MfsBuildHook hook, int32_t priority)
     return RPMRC_OK;
 }
 
+rpmRC mfsBuildHookSetPrettyName(MfsBuildHook hook, const char *name)
+{
+    free(hook->prettyname);
+    hook->prettyname = xstrdup(name);
+    return RPMRC_OK;
+}
+
 void mfsManagerRegisterBuildHook(MfsManager mm, MfsBuildHook hook)
 {
     MfsModuleContext modulecontext = mm->cur_context;
@@ -629,6 +638,13 @@ rpmRC mfsFileHookSetPriority(MfsFileHook hook, int32_t priority)
         return RPMRC_FAIL;
 
     hook->priority = priority;
+    return RPMRC_OK;
+}
+
+rpmRC mfsFileHookSetPrettyName(MfsFileHook hook, const char *name)
+{
+    free(hook->prettyname);
+    hook->prettyname = xstrdup(name);
     return RPMRC_OK;
 }
 

@@ -154,10 +154,12 @@ void mfslog(MfsContext context, int code, const char *fmt, ...);
 
 MfsBuildHook mfsBuildHookNew(MfsBuildHookFunc hookfunc, MfsHookPoint point);
 rpmRC mfsBuildHookSetPriority(MfsBuildHook hook, int32_t priority);
+rpmRC mfsBuildHookSetPrettyName(MfsBuildHook hook, const char *name);
 void mfsManagerRegisterBuildHook(MfsManager mm, MfsBuildHook hook);
 
 MfsFileHook mfsFileHookNew(MfsFileHookFunc hookfunc);
 rpmRC mfsFileHookSetPriority(MfsFileHook hook, int32_t priority);
+rpmRC mfsFileHookSetPrettyName(MfsFileHook hook, const char *name);
 void mfsFileHookAddGlob(MfsFileHook hook, const char *glob);
 void mfsManagerRegisterFileHook(MfsManager mm, MfsFileHook hook);
 

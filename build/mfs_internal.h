@@ -67,6 +67,7 @@ struct MfsBuildHook_s {
     MfsModuleContext modulecontext;
     MfsHookPoint point;
     MfsBuildHookFunc func;
+    char *prettyname;
     int32_t priority;
     struct MfsBuildHook_s * next;
 };
@@ -81,6 +82,7 @@ typedef struct MfsGlob_s * MfsGlob;
 struct MfsFileHook_s {
     MfsModuleContext modulecontext;
     MfsFileHookFunc func;
+    char *prettyname;
     int32_t priority;
     MfsGlob globs;
     struct MfsFileHook_s * next;
