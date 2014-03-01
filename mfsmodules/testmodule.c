@@ -67,7 +67,7 @@ rpmRC parserfunc_newpkg(MfsContext context)
     rc = mfsPackageFinalize(pkg);
     if (rc) return rc;
 
-    mfsSetContextData(context, pkg);
+    mfsContextSetData(context, pkg);
 
     return RPMRC_OK;
 }
@@ -79,7 +79,7 @@ rpmRC parserfunc_specmod(MfsContext context)
     char *buildroot, *prepcode;
     int pkgs;
 
-    spec = mfsSpecFromContext(context);
+    spec = mfsContextGetSpec(context);
     buildroot = mfsSpecGetString(spec, MFS_SPEC_ATTR_BUILDROOT);
 
     prepscript = mfsSpecGetScript(spec, MFS_SPEC_SCRIPT_PREP);
@@ -94,8 +94,8 @@ rpmRC parserfunc_specmod(MfsContext context)
     rpmlog(RPMLOG_INFO, "# Prep script:\n%s\n", prepcode);
     rpmlog(RPMLOG_INFO, "# Packages: %d\n", pkgs);
     rpmlog(RPMLOG_INFO, "#\n");
-    rpmlog(RPMLOG_INFO, "# Global data: %s\n", (char *) mfsGetModuleGlobalData(context));
-    rpmlog(RPMLOG_INFO, "# Context data: %s\n", (char *) mfsGetContextData(context));
+    rpmlog(RPMLOG_INFO, "# Global data: %s\n", (char *) mfsContextGetGlobalData(context));
+    rpmlog(RPMLOG_INFO, "# Context data: %s\n", (char *) mfsContextGetData(context));
 
     free(buildroot);
     free(prepcode);
@@ -264,7 +264,7 @@ rpmRC parserfunc_pkgsinfo(MfsContext context)
     int pkgs;
     rpmRC rc = RPMRC_OK;
 
-    spec = mfsSpecFromContext(context);
+    spec = mfsContextGetSpec(context);
     pkgs = mfsSpecPackageCount(spec);
 
     const rpmTagVal *supportedtags = mfsPackageTags();
@@ -291,7 +291,7 @@ rpmRC filefunc(MfsContext context, MfsFile file)
 {
     rpmlog(RPMLOG_INFO, "File: %s\n", mfsFileGetPath(file));
 
-    MfsPackage pkg = mfsGetContextData(context);
+    MfsPackage pkg = mfsContextGetData(context);
     if (!pkg) {
 	rpmlog(RPMLOG_ERR, "Cannot get package from context\n");
 	return RPMRC_FAIL;
@@ -325,22 +325,22 @@ rpmRC init_testmodule(MfsManager mm)
 
     parserhook = mfsBuildHookNew(parserfunc_newpkg, MFS_HOOK_POINT_POSTPARSE);
     mfsBuildHookSetPriority(parserhook, 1000);
-    mfsRegisterBuildHook(mm, parserhook);
+    mfsManagerRegisterBuildHook(mm, parserhook);
 
     parserhook = mfsBuildHookNew(parserfunc_pkgsinfo, MFS_HOOK_POINT_POSTPARSE);
     mfsBuildHookSetPriority(parserhook, 2000);
-    mfsRegisterBuildHook(mm, parserhook);
+    mfsManagerRegisterBuildHook(mm, parserhook);
 
     parserhook = mfsBuildHookNew(parserfunc_specmod, MFS_HOOK_POINT_POSTPARSE);
     mfsBuildHookSetPriority(parserhook, 3000);
-    mfsRegisterBuildHook(mm, parserhook);
+    mfsManagerRegisterBuildHook(mm, parserhook);
 
     filehook = mfsFileHookNew(filefunc);
     mfsFileHookAddGlob(filehook, "*%{name}.pc");
     mfsFileHookAddGlob(filehook, "*yum.h");
-    mfsRegisterFileHook(mm, filehook);
+    mfsManagerRegisterFileHook(mm, filehook);
 
-    mfsSetGlobalData(mm, "Global data");
+    mfsManagerSetGlobalData(mm, "Global data");
 
     return RPMRC_OK;
 }

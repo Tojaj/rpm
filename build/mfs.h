@@ -154,24 +154,24 @@ void mfslog(MfsContext context, int code, const char *fmt, ...);
 
 MfsBuildHook mfsBuildHookNew(MfsBuildHookFunc hookfunc, MfsHookPoint point);
 rpmRC mfsBuildHookSetPriority(MfsBuildHook hook, int32_t priority);
-void mfsRegisterBuildHook(MfsManager mm, MfsBuildHook hook);
+void mfsManagerRegisterBuildHook(MfsManager mm, MfsBuildHook hook);
 
 MfsFileHook mfsFileHookNew(MfsFileHookFunc hookfunc);
 rpmRC mfsFileHookSetPriority(MfsFileHook hook, int32_t priority);
 void mfsFileHookAddGlob(MfsFileHook hook, const char *glob);
-void mfsRegisterFileHook(MfsManager mm, MfsFileHook hook);
+void mfsManagerRegisterFileHook(MfsManager mm, MfsFileHook hook);
 
 /* Set data that can be accessed by mfsGetModuleGlobalData()
  */
-void mfsSetGlobalData(MfsManager mm, void *data);
+void mfsManagerSetGlobalData(MfsManager mm, void *data);
 
 // Common Context API
 
 /* Set/Get a data that are can be accessed by all callbacks registered
  * by the module.
  */
-void *mfsGetModuleGlobalData(MfsContext context);
-void mfsSetModuleGlobalData(MfsContext context, void *data);
+void *mfsContextGetGlobalData(MfsContext context);
+void mfsContextSetGlobalData(MfsContext context, void *data);
 
 /* This is preffered method to store data that should be
  * persistent between callbacks.
@@ -183,13 +183,13 @@ void mfsSetModuleGlobalData(MfsContext context, void *data);
  * and builded, thus each callback can be called multiple times, each
  * time for a different spec file.
  */
-void *mfsGetContextData(MfsContext context);
-void mfsSetContextData(MfsContext context, void *data);
+void *mfsContextGetData(MfsContext context);
+void mfsContextSetData(MfsContext context, void *data);
 
 // Spec manipulation API
 
-MfsSpec mfsSpecFromContext(MfsContext context);
-MfsSpec mfsSpecFromPackage(MfsPackage pkg);
+MfsSpec mfsContextGetSpec(MfsContext context);
+MfsSpec mfsPackageGetSpec(MfsPackage pkg);
 char * mfsSpecGetString(MfsSpec spec, MfsSpecAttr attr);
 rpmRC mfsSpecSetString(MfsSpec spec, MfsSpecAttr attr, const char *str);
 int mfsSpecPackageCount(MfsSpec spec);

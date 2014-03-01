@@ -549,7 +549,7 @@ rpmRC mfsBuildHookSetPriority(MfsBuildHook hook, int32_t priority)
     return RPMRC_OK;
 }
 
-void mfsRegisterBuildHook(MfsManager mm, MfsBuildHook hook)
+void mfsManagerRegisterBuildHook(MfsManager mm, MfsBuildHook hook)
 {
     MfsContext context = mm->cur_context;
     hook->context = context;
@@ -583,7 +583,7 @@ void mfsFileHookAddGlob(MfsFileHook hook, const char *glob)
     hook->globs = mfsglob;
 }
 
-void mfsRegisterFileHook(MfsManager mm, MfsFileHook hook)
+void mfsManagerRegisterFileHook(MfsManager mm, MfsFileHook hook)
 {
     assert(mm);
     MfsContext context = mm->cur_context;
@@ -592,24 +592,24 @@ void mfsRegisterFileHook(MfsManager mm, MfsFileHook hook)
     context->filehooks = hook;
 }
 
-void mfsSetGlobalData(MfsManager mm, void *data)
+void mfsManagerSetGlobalData(MfsManager mm, void *data)
 {
     assert(mm);
     MfsContext context = mm->cur_context;
     context->globaldata = data;
 }
 
-void *mfsGetModuleGlobalData(MfsContext context)
+void *mfsContextGetGlobalData(MfsContext context)
 {
     return context->globaldata;
 }
 
-void mfsSetModuleGlobalData(MfsContext context, void *data)
+void mfsContextSetGlobalData(MfsContext context, void *data)
 {
     context->globaldata = data;
 }
 
-void *mfsGetContextData(MfsContext context)
+void *mfsContextGetData(MfsContext context)
 {
     assert(context);
     for (MfsContextData cdata = context->contextdata; cdata; cdata = cdata->next)
@@ -618,7 +618,7 @@ void *mfsGetContextData(MfsContext context)
     return NULL;
 }
 
-void mfsSetContextData(MfsContext context, void *data)
+void mfsContextSetData(MfsContext context, void *data)
 {
     assert(context);
     MfsContextData cdata = context->contextdata;
@@ -641,7 +641,7 @@ void mfsSetContextData(MfsContext context, void *data)
  * Spec manipulation related API
  */
 
-MfsSpec mfsSpecFromContext(MfsContext context)
+MfsSpec mfsContextGetSpec(MfsContext context)
 {
     MfsSpec mfsspec;
 
@@ -654,7 +654,7 @@ MfsSpec mfsSpecFromContext(MfsContext context)
     return mfsspec;
 }
 
-MfsSpec mfsSpecFromPackage(MfsPackage pkg)
+MfsSpec mfsPackageGetSpec(MfsPackage pkg)
 {
     MfsSpec mfsspec;
 
