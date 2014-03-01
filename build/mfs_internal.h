@@ -72,7 +72,7 @@ struct MfsBuildHook_s {
 };
 
 struct MfsGlob_s {
-    const char *glob;
+    char *glob;
     struct MfsGlob_s *next;
 };
 

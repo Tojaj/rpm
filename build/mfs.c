@@ -106,7 +106,31 @@ void mfsManagerFree(MfsManager mm)
 {
     if (!mm)
         return;
-    // TODO: XXX Dealloc content of MM
+
+    for (MfsModuleContext mc=mm->modulecontexts; mc;) {
+	MfsModuleContext next = mc->next;
+	mfsModuleContextFree(mc);
+	mc = next;
+    }
+
+    for (MfsBuildHook bh=mm->buildhooks; bh;) {
+	MfsBuildHook next = bh->next;
+	free(bh);
+	bh = next;
+    }
+
+    for (MfsFileHook fh=mm->filehooks; fh;) {
+	MfsFileHook next = fh->next;
+	for (MfsGlob glob=fh->globs; glob;) {
+	    MfsGlob next = glob->next;
+	    free(glob->glob);
+	    free(glob);
+	    glob = next;
+	}
+	free(fh);
+	fh = next;
+    }
+
     free(mm);
 }
 
