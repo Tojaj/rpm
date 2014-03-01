@@ -11,42 +11,45 @@ extern "C" {
 
 #define MFSMODULESDIR   "mfsmodules"
 
+typedef struct MfsModuleContext_s * MfsModuleContext;
+
 typedef enum MfsCtxState_e {
     MFS_CTXSTATE_UNKNOWN,
     MFS_CTXSTATE_PARSERHOOK,
     MFS_CTXSTATE_FILEHOOK,
 } MfsCtxState;
 
-typedef struct MfsContextData_s {
-    rpmSpec spec;
-    void *data;
-    struct MfsContextData_s *next;
-} * MfsContextData;
-
+/** Context related to a module and a spec file.
+ */
 struct MfsContext_s {
-    MfsManager manager;
+    MfsModuleContext modulecontext; /*!< Parent module context */
+    MfsCtxState state;		    /*!< State of this context */
+    rpmSpec spec;		    /*!< Related spec file */
+    void *userdata;		    /*!< Context related user's data */
 
-    char *modulename;
+    struct MfsContext_s *next;
+};
 
-    MfsCtxState state;
+/** Context related to a module.
+ */
+struct MfsModuleContext_s {
+    MfsManager manager;	    /*!< Manager */
+    char *modulename;	    /*!< Name of the module */
+    void *globaldata;	    /*!< User's global data (module related) */
+    MfsContext contexts;    /*!< MfsContexts */
 
+    // Stuff related to the module loading stage
     // Hooks related to the context
     // Used only during registration, will be NULL after
     // the call of mfsManagerSortHooks()
     MfsBuildHook buildhooks;
     MfsFileHook filehooks;
 
-    rpmSpec cur_spec;  /*!< Current spec file during a hook call */
-
-    // User data
-    void *globaldata;
-    MfsContextData contextdata;
-
-    struct MfsContext_s *next;
+    struct MfsModuleContext_s *next;
 };
 
 struct MfsManager_s {
-    MfsContext contexts;
+    MfsModuleContext modulecontexts;
 
     // Sorted lists of all hooks
     MfsBuildHook buildhooks;
@@ -55,13 +58,13 @@ struct MfsManager_s {
     rpmSpec mainspec; /*!<
 	The spec returned from parseSpec (the one inserted to the buildSpec) */
 
-    MfsContext cur_context;  /*!< Used during loading of modules */
+    MfsModuleContext cur_context;  /*!< Used during loading of modules */
 };
 
 // Hooks
 
 struct MfsBuildHook_s {
-    MfsContext context;
+    MfsModuleContext modulecontext;
     MfsHookPoint point;
     MfsBuildHookFunc func;
     int32_t priority;
@@ -76,7 +79,7 @@ struct MfsGlob_s {
 typedef struct MfsGlob_s * MfsGlob;
 
 struct MfsFileHook_s {
-    MfsContext context;
+    MfsModuleContext modulecontext;
     MfsFileHookFunc func;
     int32_t priority;
     MfsGlob globs;

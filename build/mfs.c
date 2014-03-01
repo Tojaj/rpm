@@ -72,11 +72,12 @@ void mfslog(MfsContext context, int code, const char *fmt, ...)
 	char *msg_format, *msg;
 	size_t nb = n;
 
-        nb += strlen(context->modulename) + 2 + 1; // modulename + ": " + '\0'
+	// modulename + ": " + '\0'
+        nb += strlen(context->modulecontext->modulename) + 2 + 1;
 	msg = xmalloc(nb);
 	msg_format = xmalloc(nb);
 
-	strcpy(msg_format, context->modulename);
+	strcpy(msg_format, context->modulecontext->modulename);
 	strcat(msg_format, ": ");
 	strcat(msg_format, fmt);
 
@@ -157,7 +158,7 @@ static void mfsManagerInsertSortedFileHook(MfsManager mfsm,
 
 static void mfsManagerSortHooks(MfsManager mfsm)
 {
-    MfsContext ctx = mfsm->contexts;
+    MfsModuleContext ctx = mfsm->modulecontexts;
 
     while (ctx) {
         // Use build Hooks
@@ -183,12 +184,12 @@ static void mfsManagerSortHooks(MfsManager mfsm)
     rpmlog(RPMLOG_INFO, _("Registered BuildHooks:\n"));
     for (MfsBuildHook cur = mfsm->buildhooks; cur; cur = cur->next)
         rpmlog(RPMLOG_INFO, _("- Module %s registered BuildHook %p (%d)\n"),
-                cur->context->modulename, cur->func, cur->priority);
+                cur->modulecontext->modulename, cur->func, cur->priority);
 
     rpmlog(RPMLOG_INFO, _("Registered FileHooks:\n"));
     for (MfsFileHook cur = mfsm->filehooks; cur; cur = cur->next)
         rpmlog(RPMLOG_INFO, _("- Module %s registered FileHook %p (%d)\n"),
-                cur->context->modulename, cur->func, cur->priority);
+                cur->modulecontext->modulename, cur->func, cur->priority);
 }
 
 /* Insert (move) the current context the internal list of contexts.
@@ -197,17 +198,16 @@ static void mfsManagerSortHooks(MfsManager mfsm)
  */
 static void mfsManagerUseCurrentContext(MfsManager mfsm)
 {
-    MfsContext cur = mfsm->cur_context;
-    MfsContext prev = NULL;
-    MfsContext node = mfsm->contexts;
+    MfsModuleContext cur = mfsm->cur_context;
+    MfsModuleContext prev = NULL;
+    MfsModuleContext node = mfsm->modulecontexts;
 
-    cur->manager = mfsm;
     mfsm->cur_context = NULL;
 
     if (!node || strcmp(cur->modulename, node->modulename) < 0) {
         // Prepend item to the beginning of the list
         cur->next = node;
-        mfsm->contexts = cur;
+        mfsm->modulecontexts = cur;
         return;
     }
 
@@ -223,18 +223,50 @@ static void mfsManagerUseCurrentContext(MfsManager mfsm)
     prev->next = cur;
 }
 
-MfsContext mfsContextNew(void)
+MfsContext mfsModuleContextGetContext(MfsModuleContext parent, rpmSpec spec)
 {
-    MfsContext context = xcalloc(1, sizeof(*context));
+    MfsContext context = NULL;
+
+    // Find a context for the specified spec file
+    for (context = parent->contexts; context; context = context->next)
+	if (context->spec == spec)
+	    return context;
+
+    // Or create a new, if it doesn't already exist
+    context = xcalloc(1, sizeof(*context));
+    context->modulecontext = parent;
+    context->state = MFS_CTXSTATE_UNKNOWN;
+    context->spec = spec;
+
+    context->next = parent->contexts;
+    parent->contexts = context;
+
     return context;
 }
 
 void mfsContextFree(MfsContext context)
 {
+    free(context);
+}
+
+MfsModuleContext mfsModuleContextNew(MfsManager mm, const char *modulename)
+{
+    MfsModuleContext context = xcalloc(1, sizeof(*context));
+    context->manager = mm;
+    context->modulename = xstrdup(modulename);
+    return context;
+}
+
+void mfsModuleContextFree(MfsModuleContext context)
+{
     if (!context)
         return;
     free(context->modulename);
-    // TODO: XXX Dealloc content of context
+    for (MfsContext c = context->contexts; c;) {
+	MfsContext next = c->next;
+	mfsContextFree(c);
+	c = next;
+    }
     free(context);
 }
 
@@ -303,9 +335,8 @@ static void *loadModule(const char *name, const char *fullpath,
     }
 
     // Prepare context for this module
-    MfsContext context = mfsContextNew();
-    context->modulename = strdup(name);
-    mfsm->cur_context = context;
+    MfsModuleContext mcontext = mfsModuleContextNew(mfsm, name);
+    mfsm->cur_context = mcontext;
 
     // Init the module
     rc = initfunc(mfsm);
@@ -313,7 +344,7 @@ static void *loadModule(const char *name, const char *fullpath,
         rpmlog(RPMLOG_ERR, _("Error: Init function of %s returned %d\n"),
 		fullpath, rc);
         dlclose(handle);
-        mfsContextFree(context);
+        mfsModuleContextFree(mcontext);
         mfsm->cur_context = NULL;
         return NULL;
     }
@@ -407,20 +438,21 @@ rpmRC mfsManagerCallBuildHooks(MfsManager mm, rpmSpec cur_spec, MfsHookPoint poi
 	return RPMRC_FAIL;
 
     for (MfsBuildHook hook = mm->buildhooks; hook; hook=hook->next) {
+        MfsBuildHookFunc func = hook->func;
+        MfsModuleContext modulecontext = hook->modulecontext;
+	MfsContext context;
+
 	if (hook->point != point)
 	    continue;
 
-        MfsBuildHookFunc func = hook->func;
-        MfsContext context = hook->context;
-
 	// Prepare the context
-	context->cur_spec = cur_spec;
+	context = mfsModuleContextGetContext(modulecontext, cur_spec);
 	context->state = MFS_CTXSTATE_PARSERHOOK;
 
 	// Call the hook
         if ((rc = func(context)) != RPMRC_OK) {
 	    rpmlog(RPMLOG_ERR, _("Module %s returned an error from parsehook\n"),
-		   hook->context->modulename);
+		   hook->modulecontext->modulename);
             break;
 	}
 
@@ -474,7 +506,8 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
 
     for (MfsFileHook hook = mm->filehooks; hook; hook=hook->next) {
 	MfsFileHookFunc func = hook->func;
-        MfsContext context = hook->context;
+        MfsModuleContext modulecontext = hook->modulecontext;
+	MfsContext context;
 
 	// Check the glob
 	const char *diskpath = rec->diskPath;
@@ -497,13 +530,13 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
 	mfsfile->include_in_original = local_include_in_original;
 
 	// Prepare the context
-	context->cur_spec = cur_spec;
+	context = mfsModuleContextGetContext(modulecontext, cur_spec);
 	context->state = MFS_CTXSTATE_FILEHOOK;
 
 	// Call the hook
         if ((rc = func(context, mfsfile)) != RPMRC_OK) {
 	    rpmlog(RPMLOG_ERR, _("Module %s returned an error from filehook\n"),
-		   hook->context->modulename);
+		   hook->modulecontext->modulename);
             break;
 	}
 
@@ -551,10 +584,10 @@ rpmRC mfsBuildHookSetPriority(MfsBuildHook hook, int32_t priority)
 
 void mfsManagerRegisterBuildHook(MfsManager mm, MfsBuildHook hook)
 {
-    MfsContext context = mm->cur_context;
-    hook->context = context;
-    hook->next = context->buildhooks;
-    context->buildhooks = hook;
+    MfsModuleContext modulecontext = mm->cur_context;
+    hook->modulecontext = modulecontext;
+    hook->next = modulecontext->buildhooks;
+    modulecontext->buildhooks = hook;
 }
 
 MfsFileHook mfsFileHookNew(MfsFileHookFunc hookfunc)
@@ -586,55 +619,38 @@ void mfsFileHookAddGlob(MfsFileHook hook, const char *glob)
 void mfsManagerRegisterFileHook(MfsManager mm, MfsFileHook hook)
 {
     assert(mm);
-    MfsContext context = mm->cur_context;
-    hook->context = context;
-    hook->next = context->filehooks;
-    context->filehooks = hook;
+    MfsModuleContext modulecontext = mm->cur_context;
+    hook->modulecontext = modulecontext;
+    hook->next = modulecontext->filehooks;
+    modulecontext->filehooks = hook;
 }
 
 void mfsManagerSetGlobalData(MfsManager mm, void *data)
 {
     assert(mm);
-    MfsContext context = mm->cur_context;
-    context->globaldata = data;
+    MfsModuleContext modulecontext = mm->cur_context;
+    modulecontext->globaldata = data;
 }
 
 void *mfsContextGetGlobalData(MfsContext context)
 {
-    return context->globaldata;
+    return context->modulecontext->globaldata;
 }
 
 void mfsContextSetGlobalData(MfsContext context, void *data)
 {
-    context->globaldata = data;
+    context->modulecontext->globaldata = data;
 }
 
 void *mfsContextGetData(MfsContext context)
 {
     assert(context);
-    for (MfsContextData cdata = context->contextdata; cdata; cdata = cdata->next)
-	if (cdata->spec == context->cur_spec)
-	    return cdata->data;
-    return NULL;
+    return context->userdata;
 }
 
 void mfsContextSetData(MfsContext context, void *data)
 {
-    assert(context);
-    MfsContextData cdata = context->contextdata;
-
-    for (; cdata; cdata = cdata->next)
-	if (cdata->spec == context->cur_spec)
-	    break;
-
-    if (!cdata) {
-	cdata = xcalloc(1, sizeof(*cdata));
-	cdata->spec = context->cur_spec;
-	cdata->next = context->contextdata;
-	context->contextdata = cdata;
-    }
-
-    cdata->data = data;
+    context->userdata = data;
 }
 
 /*
@@ -645,11 +661,11 @@ MfsSpec mfsContextGetSpec(MfsContext context)
 {
     MfsSpec mfsspec;
 
-    if (!context || !context->cur_spec)
+    if (!context || !context->spec)
 	return NULL;
 
     mfsspec = xcalloc(1, sizeof(*mfsspec));
-    mfsspec->rpmspec = context->cur_spec;
+    mfsspec->rpmspec = context->spec;
 
     return mfsspec;
 }
@@ -929,7 +945,7 @@ MfsPackage mfsPackageNew(MfsContext context,
 {
     int flag = 0;
     MfsPackage mfs_pkg;
-    rpmSpec spec = context->cur_spec;
+    rpmSpec spec = context->spec;
     char *fullname;
     Package pkg;
 
