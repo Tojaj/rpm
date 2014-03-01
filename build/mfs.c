@@ -497,7 +497,8 @@ rpmRC mfsManagerCallBuildHooks(MfsManager mm, rpmSpec cur_spec, MfsHookPoint poi
 
 	// Prepare the context
 	context = mfsModuleContextGetContext(modulecontext, cur_spec);
-	context->state = MFS_CTXSTATE_PARSERHOOK;
+	context->state = MFS_CTXSTATE_BUILDHOOK;
+	context->lastpoint = point;
 
 	// Logging
 	if (hook->prettyname)
@@ -1029,9 +1030,13 @@ MfsPackage mfsPackageNew(MfsContext context,
     char *fullname;
     Package pkg;
 
-    if (context->state != MFS_CTXSTATE_PARSERHOOK) {
+    if (context->state != MFS_CTXSTATE_BUILDHOOK) {
 	rpmlog(RPMLOG_ERR, _("Packages must be added in a build hook. "
 			     "Cannot add: %s\n"), name);
+	return NULL;
+    } else if (context->lastpoint > MFS_HOOK_POINT_POSTCHECK) {
+	rpmlog(RPMLOG_ERR, _("Packages cannot be added after at this point "
+			     "of process. Cannot add: %s\n"), name);
 	return NULL;
     }
 

@@ -13,10 +13,12 @@ extern "C" {
 
 typedef struct MfsModuleContext_s * MfsModuleContext;
 
+/** State of this context
+ */
 typedef enum MfsCtxState_e {
-    MFS_CTXSTATE_UNKNOWN,
-    MFS_CTXSTATE_PARSERHOOK,
-    MFS_CTXSTATE_FILEHOOK,
+    MFS_CTXSTATE_UNKNOWN,	/*!< Context isn't currently used */
+    MFS_CTXSTATE_BUILDHOOK,	/*!< A parser hook is using the context */
+    MFS_CTXSTATE_FILEHOOK,	/*!< A file hook is using the context */
 } MfsCtxState;
 
 /** Context related to a module and a spec file.
@@ -24,6 +26,9 @@ typedef enum MfsCtxState_e {
 struct MfsContext_s {
     MfsModuleContext modulecontext; /*!< Parent module context */
     MfsCtxState state;		    /*!< State of this context */
+    MfsHookPoint lastpoint;	    /*!< Last point the context was used at
+					 or current point at which the context
+					 is being used */
     rpmSpec spec;		    /*!< Related spec file */
     void *userdata;		    /*!< Context related user's data */
 
