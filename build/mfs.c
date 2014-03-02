@@ -1523,6 +1523,8 @@ rpmRC mfsPackageSetChangelogs(MfsPackage pkg, MfsChangelogs changelogs)
     headerDel(hdr, RPMTAG_CHANGELOGNAME);
     headerDel(hdr, RPMTAG_CHANGELOGTEXT);
 
+    mfslog_info("Setting new changelog for %s\n", pkg->fullname);
+
     for (MfsChangelog e = changelogs->entries; e; e = e->next) {
 	if (!e->name || !e->text) {
 	    mfslog_warning(_("Invalid changelog entry skipped\n"));
@@ -1676,6 +1678,8 @@ rpmRC mfsPackageSetDeps(MfsPackage pkg, MfsDeps deps, MfsDepType deptype)
     rpmdsFree(*ds);
     *ds = NULL;
 
+    mfslog_info("Setting new dependencies for %s\n", pkg->fullname);
+
     // Set the new dependencies
     for (MfsDep e = deps->entries; e; e = e->next) {
 	if (!e->name) {
@@ -1703,6 +1707,8 @@ rpmRC mfsPackageSetDeps(MfsPackage pkg, MfsDeps deps, MfsDepType deptype)
 			e->name);
 	}
 
+	mfslog_info(" - %s %s %d\n", e->name, e->version ? e->version : "", e->flags);
+
 	ret = addReqProv(pkg->pkg,
 			 nametag, e->name,
 			 e->version ? e->version : "",
@@ -1729,6 +1735,9 @@ MfsFileLines mfsPackageGetFileLines(MfsPackage pkg)
 rpmRC mfsPackageSetFileLines(MfsPackage pkg, MfsFileLines flines)
 {
     argvFree(pkg->pkg->fileList);
+    mfslog_info("Setting new files to %s\n", pkg->fullname);
+    for (int x=0; flines->filelines && flines->filelines[x]; x++)
+	mfslog_info(" - %s\n", flines->filelines[x]);
     pkg->pkg->fileList = argvCopy(flines->filelines);
     return RPMRC_OK;
 }
@@ -1740,10 +1749,13 @@ MfsFileFiles mfsPackageGetFileFiles(MfsPackage pkg)
     return fl;
 }
 
-rpmRC mfsPackageSetFileFiles(MfsPackage pkg, MfsFileFiles filefiles)
+rpmRC mfsPackageSetFileFiles(MfsPackage pkg, MfsFileFiles ffiles)
 {
     argvFree(pkg->pkg->fileFile);
-    pkg->pkg->fileFile = argvCopy(filefiles->filefiles);
+    mfslog_info("Setting new filelists to %s\n", pkg->fullname);
+    for (int x=0; ffiles->filefiles && ffiles->filefiles[x]; x++)
+	mfslog_info(" - %s\n", ffiles->filefiles[x]);
+    pkg->pkg->fileFile = argvCopy(ffiles->filefiles);
     return RPMRC_OK;
 }
 
@@ -2399,6 +2411,8 @@ rpmRC mfsPackageAddFile(MfsPackage pkg, MfsFile file)
 	mfslog_err(_("Cannot append file to the package"));
 	return RPMRC_FAIL;
     }
+
+    mfslog_info("Adding %s to %s\n", file->diskpath, pkg->fullname);
 
     addFileListRecord(fl, file->flr);
     return RPMRC_OK;
