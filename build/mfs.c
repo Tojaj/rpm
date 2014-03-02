@@ -50,6 +50,20 @@ static const char *enumHookPointValToStr(MfsHookPoint point)
     return "UNKNOWN";
 }
 
+static const char *enumSpecAttrValToStr(MfsSpecAttr val)
+{
+    switch (val) {
+    case MFS_SPEC_ATTR_SPECFILE:	return "specfile";
+    case MFS_SPEC_ATTR_BUILDROOT:	return "buildroot";
+    case MFS_SPEC_ATTR_BUILDSUBDIR:	return "buildsubdir";
+    case MFS_SPEC_ATTR_ROOTDIR:		return "rootdir";
+    case MFS_SPEC_ATTR_SOURCERPMNAME:	return "sourcerpmname";
+    case MFS_SPEC_ATTR_PARSED:		return "parsed";
+    default: break;
+    }
+    return "UNKNOWN";
+}
+
 static inline char *mstrdup(const char *str)
 {
     if (!str) return NULL;
