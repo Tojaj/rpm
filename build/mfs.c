@@ -828,6 +828,9 @@ rpmRC mfsSpecSetString(MfsSpec spec, MfsSpecAttr attr, const char *str)
 
     rpmspec = spec->rpmspec;
 
+    mfslog_info("Setting spec attribute %s to: \"%s\"\n",
+		enumSpecAttrValToStr(attr), str ? str : "NULL");
+
     switch (attr) {
     case MFS_SPEC_ATTR_SPECFILE:
 	rpmspec->specFile = mstrdup(str);
