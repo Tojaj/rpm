@@ -1086,6 +1086,8 @@ MfsPackage mfsPackageNew(MfsContext context,
     } else
         fullname = mstrdup(name);
 
+    mfslog_info("Adding new subpackage \"%s\"\n", fullname);
+
     pkg = newPackage(fullname, spec->pool, &spec->packages);
 
     headerPutString(pkg->header, RPMTAG_NAME, fullname);
