@@ -968,6 +968,9 @@ rpmRC mfsSpecSetScript(MfsSpec spec, MfsBTScript script, MfsBTScriptType type)
     rpmSpec rpmspec = spec->rpmspec;
     const char *code = getStringBuf(script->code);
 
+    mfslog_info("Setting spec script %s to:\n%s\n",
+		enumBTScriptTypeValToStr(type), code ? code : "NULL");
+
     switch (type) {
     case MFS_SPEC_SCRIPT_PREP:
 	rc = _replaceStringBuf(&rpmspec->prep, code);
