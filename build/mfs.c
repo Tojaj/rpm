@@ -77,6 +77,21 @@ static const char *enumBTScriptTypeValToStr(MfsBTScriptType val)
     return "UNKNOWN";
 }
 
+static const char *enumScriptTypeValToStr(MfsScriptType val)
+{
+    switch (val) {
+    case MFS_SCRIPT_PREIN:	    return "prein";
+    case MFS_SCRIPT_POSTIN:	    return "postin";
+    case MFS_SCRIPT_PREUN:	    return "preun";
+    case MFS_SCRIPT_POSTUN:	    return "postun";
+    case MFS_SCRIPT_PRETRANS:	    return "pretrans";
+    case MFS_SCRIPT_POSTTRANS:	    return "posttrans";
+    case MFS_SCRIPT_VERIFYSCRIPT:   return "verifyscript";
+    default: break;
+    }
+    return "UNKNOWN";
+}
+
 static inline char *mstrdup(const char *str)
 {
     if (!str) return NULL;
