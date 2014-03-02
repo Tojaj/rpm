@@ -64,6 +64,19 @@ static const char *enumSpecAttrValToStr(MfsSpecAttr val)
     return "UNKNOWN";
 }
 
+static const char *enumBTScriptTypeValToStr(MfsBTScriptType val)
+{
+    switch (val) {
+    case MFS_SPEC_SCRIPT_PREP:	    return "prep";
+    case MFS_SPEC_SCRIPT_BUILD:	    return "build";
+    case MFS_SPEC_SCRIPT_INSTALL:   return "install";
+    case MFS_SPEC_SCRIPT_CHECK:	    return "check";
+    case MFS_SPEC_SCRIPT_CLEAN:	    return "clean";
+    default: break;
+    }
+    return "UNKNOWN";
+}
+
 static inline char *mstrdup(const char *str)
 {
     if (!str) return NULL;
