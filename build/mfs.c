@@ -1355,6 +1355,12 @@ rpmRC mfsPackageSetScript(MfsPackage pkg, MfsScript script, MfsScriptType type)
 
     // Insert the script to the package
 
+    mfslog_info("Setting script %s to %s:\n", enumScriptTypeValToStr(type), pkg->fullname);
+    mfslog_info(" - Script prog:  %s\n", script->prog ? script->prog : "");
+    mfslog_info(" - Script file:  %s\n", script->file ? script->file : "");
+    mfslog_info(" - Script flags: %d\n", script->flags);
+    mfslog_info(" - Script code:\n%s\n", script->code ? script->code : "");
+
     struct rpmtd_s td;
     rpmtdReset(&td);
     td.tag = rec->progtag;
