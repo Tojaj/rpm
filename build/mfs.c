@@ -91,12 +91,13 @@ void mfslog(int code, const char *fmt, ...)
     n = vsnprintf(NULL, 0, fmt, ap);
     va_end(ap);
 
-    if (n >= -1) {
+    if (n >= 0) {
 	char *msg_format, *msg;
-	size_t nb = n + STATICSTRLEN(LOGPREFIX); // '\0' is included
+	size_t nb = n + STATICSTRLEN(LOGPREFIX);
+	size_t fb = strlen(fmt) + STATICSTRLEN(LOGPREFIX) ;
 
 	msg = xmalloc(nb);
-	msg_format = xmalloc(nb);
+	msg_format = xmalloc(fb);
 
 	strcpy(msg_format, LOGPREFIX);
 	strcat(msg_format, fmt);
