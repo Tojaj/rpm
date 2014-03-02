@@ -278,11 +278,16 @@ static rpmRC buildSpec(BTA_t buildArgs, rpmSpec spec, int what)
 	    (rc = processSourceFiles(spec, buildArgs->pkgFlags)))
 		goto exit;
 
+        if ((rc = mfsMangerInitFileClassificator(mm, spec)) != RPMRC_OK)
+            goto exit;
+
 	if (((what & RPMBUILD_INSTALL) || (what & RPMBUILD_PACKAGEBINARY) ||
 	    (what & RPMBUILD_FILECHECK)) &&
 	    (rc = processBinaryFiles(spec, buildArgs->pkgFlags,
 				     what & RPMBUILD_INSTALL, test)))
 		goto exit;
+
+        mfsMangerFreeFileClassificator(mm);
 
 	if (((what & RPMBUILD_INSTALL) || (what & RPMBUILD_PACKAGEBINARY)) &&
 	    (rc = processBinaryPolicies(spec, test)))

@@ -400,6 +400,10 @@ ARGV_t mfsFileGetLangs(MfsFile file);
 rpmRC mfsFileSetLangs(MfsFile file, const ARGV_t langs);
 const char *mfsFileGetCaps(MfsFile file);
 rpmRC mfsFileSetCaps(MfsFile file, const char *caps);
+// Data filled by classificator
+rpm_color_t mfsFileGetColor(MfsFile file);
+const ARGV_t mfsFileGetAttrs(MfsFile file);
+const char *mfsFileGetType(MfsFile file);
 
 // Helper/Debug function - non guaranted API
 

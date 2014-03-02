@@ -606,10 +606,14 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
 			      FileListRec rec, int *include_in_original)
 {
     rpmRC rc = RPMRC_OK;
+    rpmcf classified_file;
     int local_include_in_original = 1;
 
     if (!mm)
 	return RPMRC_OK;
+
+    // Classify the file
+    classified_file = rpmfcClassifyFile(mm->fc, rec->diskPath, rec->fl_mode);
 
     for (MfsFileHook hook = mm->filehooks; hook; hook=hook->next) {
 	MfsFileHookFunc func = hook->func;
@@ -635,6 +639,7 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
 	mfsfile->flr = mfsDupFileListRec(rec);
 	mfsfile->diskpath = rec->diskPath;
 	mfsfile->include_in_original = local_include_in_original;
+        mfsfile->classified_file = classified_file;
 
 	// Prepare the context
 	context = mfsModuleContextGetContext(modulecontext, cur_spec);
@@ -663,6 +668,8 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
 
 	context->state = MFS_CTXSTATE_UNKNOWN;
     }
+
+    rpmcfFree(classified_file);
 
     *include_in_original = local_include_in_original;
 
@@ -2581,6 +2588,24 @@ rpmRC mfsFileSet(MfsFile file, const char *caps)
     free(file->flr->caps);
     file->flr->caps = mstrdup(caps);
     return RPMRC_OK;
+}
+
+rpm_color_t mfsFileGetColor(MfsFile file)
+{
+    assert(file);
+    return rpmcfColor(file->classified_file);
+}
+
+const ARGV_t mfsFileGetAttrs(MfsFile file)
+{
+    assert(file);
+    return rpmcfAttrs(file->classified_file);
+}
+
+const char *mfsFileGetType(MfsFile file)
+{
+    assert(file);
+    return rpmcfType(file->classified_file);
 }
 
 /*

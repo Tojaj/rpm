@@ -156,6 +156,7 @@ struct MfsFile_s {
     struct FileListRec_s *flr;
     const char *diskpath;
     int include_in_original;
+    rpmcf classified_file;
 };
 
 typedef const struct MfsDepMapRec_s {
@@ -294,6 +295,13 @@ void mfsContextFree(MfsContext context);
 
 rpmRC mfsLoadModules(void **modules, const char *path, MfsManager msfm);
 void mfsUnloadModules(void *modules);
+
+/** Function that initialize shared file classificator.
+ * This function must be called before call(s) of mfsManagerCallFileHooks().
+ * I.e. It should be called before processBinaryFiles().
+ */
+rpmRC mfsMangerInitFileClassificator(MfsManager mm, rpmSpec spec);
+void mfsMangerFreeFileClassificator(MfsManager mm);
 
 /* Call all registered build hooks */
 rpmRC mfsManagerCallBuildHooks(MfsManager mm, rpmSpec cur_spec,
