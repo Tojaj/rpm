@@ -31,6 +31,8 @@ typedef struct MfsModuleLoadState_s {
     MfsHandleList handles;
 } * MfsModuleLoadState;
 
+// Forward declaration
+void mfsModuleContextFree(MfsModuleContext context);
 
 /*
  * Helper functions
