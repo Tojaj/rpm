@@ -1433,6 +1433,8 @@ rpmRC mfsPackageDeleteScript(MfsPackage pkg, MfsScriptType type)
     if (rec->scripttype == MFS_SCRIPT_SENTINEL)
 	return RPMRC_FAIL;  // Programmer error
 
+    mfslog_info("Removing script %s from %s:\n", enumScriptTypeValToStr(type), pkg->fullname);
+
     // Remove all script related stuff
     headerDel(hdr, rec->tag);	    // Code from header
     headerDel(hdr, rec->progtag);   // Prog from header
