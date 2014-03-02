@@ -1170,6 +1170,9 @@ rpmRC mfsPackageSetTag(MfsPackage pkg,
 	    opt = "";
     }
 
+    mfslog_info("Setting tag %s: \"%s\" (%s) to %s\n",
+		rpmTagGetName(tag), value, opt ? opt : "NULL", pkg->fullname);
+
     rc = applyPreambleTag(pkg->spec, pkg->pkg, tag, macro, opt, value);
 
     return rc;
