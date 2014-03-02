@@ -188,6 +188,9 @@ void mfsManagerFree(MfsManager mm)
 	fh = next;
     }
 
+    if (mm->fc)
+        rpmfcFree(mm->fc);
+
     free(mm);
 }
 
@@ -585,6 +588,18 @@ static void mfsFreeDuppedFileListRec(FileListRec copy)
     free(copy->langs);
     free(copy->caps);
     free(copy);
+}
+
+rpmRC mfsMangerInitFileClassificator(MfsManager mm, rpmSpec spec)
+{
+    mm->fc = rpmfcCreate(spec->buildRoot, 0);
+    return RPMRC_OK;
+}
+
+void mfsMangerFreeFileClassificator(MfsManager mm)
+{
+    rpmfcFree(mm->fc);
+    mm->fc = NULL;
 }
 
 rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,

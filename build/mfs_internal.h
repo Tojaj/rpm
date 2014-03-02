@@ -2,6 +2,8 @@
 #define	_MFS_INTERNAL_H_
 
 #include "mfs.h"
+#include "rpmfc.h"
+#include "rpmfc_internal.h"
 #include "rpmbuild_internal.h"
 #include "lib/rpmscript.h"	/* script flags */
 
@@ -63,6 +65,8 @@ struct MfsManager_s {
 
     rpmSpec mainspec; /*!<
 	The spec returned from parseSpec (the one inserted to the buildSpec) */
+
+    rpmfc fc; /*!< File classificator used during call of file hooks. */
 
     MfsModuleContext cur_context;  /*!< Used during loading of modules */
 };
