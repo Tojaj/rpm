@@ -617,6 +617,11 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
     // Classify the file
     classified_file = rpmfcClassifyFile(mm->fc, rec->diskPath, rec->fl_mode);
 
+    // Prepare the MfsFile
+    MfsFile mfsfile = xcalloc(1, sizeof(*mfsfile));
+    mfsfile->diskpath = rec->diskPath;
+    mfsfile->classified_file = classified_file;
+
     for (MfsFileHook hook = mm->filehooks; hook; hook=hook->next) {
 	MfsFileHookFunc func = hook->func;
         MfsModuleContext modulecontext = hook->modulecontext;
@@ -637,11 +642,8 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
 	    continue;
 
 	// Prepare the MfsFile
-	MfsFile mfsfile = xcalloc(1, sizeof(*mfsfile));
 	mfsfile->flr = mfsDupFileListRec(rec);
-	mfsfile->diskpath = rec->diskPath;
 	mfsfile->include_in_original = local_include_in_original;
-        mfsfile->classified_file = classified_file;
 
 	// Prepare the context
 	context = mfsModuleContextGetContext(modulecontext, cur_spec);
@@ -666,11 +668,11 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
 	if (!mfsfile->include_in_original)
 	    local_include_in_original = 0;
 	mfsFreeDuppedFileListRec(mfsfile->flr);
-	free(mfsfile);
 
 	context->state = MFS_CTXSTATE_UNKNOWN;
     }
 
+    free(mfsfile);
     rpmcfFree(classified_file);
 
     *include_in_original = local_include_in_original;
