@@ -167,6 +167,8 @@ struct MfsFile_s {
     const char *diskpath;	/*!< Path of the file on the disk */
     int include_in_original;	/*!< Flag (0 - False, otherwise - True) */
     rpmcf classified_file;	/*!< Information from file classificator */
+    Package originalpkg;	/*!< Original destination package */
+    rpmSpec spec;		/*!< Current spec */
     MfsFilePackageList pkglist; /*!< List of packages that include the file */
 };
 
@@ -318,7 +320,7 @@ void mfsMangerFreeFileClassificator(MfsManager mm);
 rpmRC mfsManagerCallBuildHooks(MfsManager mm, rpmSpec cur_spec,
 			       MfsHookPoint point);
 
-rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
+rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec, Package pkg,
 			      FileListRec rec, int *include_in_original);
 
 #ifdef __cplusplus

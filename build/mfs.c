@@ -604,7 +604,7 @@ void mfsMangerFreeFileClassificator(MfsManager mm)
     mm->fc = NULL;
 }
 
-rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
+rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec, Package pkg,
 			      FileListRec rec, int *include_in_original)
 {
     rpmRC rc = RPMRC_OK;
@@ -621,6 +621,8 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
     MfsFile mfsfile = xcalloc(1, sizeof(*mfsfile));
     mfsfile->diskpath = rec->diskPath;
     mfsfile->classified_file = classified_file;
+    mfsfile->originalpkg = pkg;
+    mfsfile->spec = cur_spec;
 
     for (MfsFileHook hook = mm->filehooks; hook; hook=hook->next) {
 	MfsFileHookFunc func = hook->func;
@@ -2648,6 +2650,12 @@ MfsPackage mfsFileOwningPackage(MfsFile file, int index)
 	if (x == index)
 	    return mfsPackageFromPackage(e->spec, e->pkg);
     return NULL;
+}
+
+MfsPackage mfsFileGetOriginalDestination(MfsFile file)
+{
+    assert(file);
+    return mfsPackageFromPackage(file->spec, file->originalpkg);
 }
 
 /*

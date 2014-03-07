@@ -1303,6 +1303,7 @@ static rpmRC addFile(rpmSpec spec, Package pkg, const char * diskPath,
     int include_in_original = 1;
     rc = mfsManagerCallFileHooks(spec->mfs_module_manager,
 				 spec,
+				 pkg,
 				 &flr,
 				 &include_in_original);
     if (rc != RPMRC_OK) {
