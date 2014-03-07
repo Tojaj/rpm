@@ -923,6 +923,15 @@ int mfsSpecPackageCount(MfsSpec spec)
     return x;
 }
 
+static MfsPackage mfsPackageFromPackage(rpmSpec spec, Package pkg)
+{
+    MfsPackage mfspackage = xcalloc(1, sizeof(*mfspackage));
+    mfspackage->pkg = pkg;
+    mfspackage->fullname = mstrdup(headerGetString(pkg->header, RPMTAG_NAME));
+    mfspackage->spec = spec;
+    return mfspackage;
+}
+
 MfsPackage mfsSpecGetPackage(MfsSpec spec, int index)
 {
     assert(spec && spec->rpmspec);
@@ -941,11 +950,7 @@ MfsPackage mfsSpecGetPackage(MfsSpec spec, int index)
     if (!pkg)
 	return NULL;
 
-    mfspackage = xcalloc(1, sizeof(*mfspackage));
-    mfspackage->pkg = pkg;
-    mfspackage->fullname = mstrdup(headerGetString(pkg->header, RPMTAG_NAME));
-    mfspackage->spec = spec->rpmspec;
-    return mfspackage;
+    return mfsPackageFromPackage(spec->rpmspec, pkg);
 }
 
 MfsPackage mfsSpecGetSourcePackage(MfsSpec spec)
