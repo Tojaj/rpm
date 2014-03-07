@@ -152,11 +152,22 @@ struct MfsFileFiles_s {
     ARGV_t filefiles;
 };
 
+/** List for packages that includes a file
+ */
+struct MfsFilePackageList_s {
+    Package pkg;
+    rpmSpec spec;
+    struct MfsFilePackageList_s *next;
+};
+
+typedef struct MfsFilePackageList_s * MfsFilePackageList;
+
 struct MfsFile_s {
-    struct FileListRec_s *flr;
-    const char *diskpath;
-    int include_in_original;
-    rpmcf classified_file;
+    struct FileListRec_s *flr;	/*!< RPM's internal structure representing the file */
+    const char *diskpath;	/*!< Path of the file on the disk */
+    int include_in_original;	/*!< Flag (0 - False, otherwise - True) */
+    rpmcf classified_file;	/*!< Information from file classificator */
+    MfsFilePackageList pkglist; /*!< List of packages that include the file */
 };
 
 typedef const struct MfsDepMapRec_s {

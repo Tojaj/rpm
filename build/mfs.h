@@ -404,6 +404,8 @@ rpmRC mfsFileSetCaps(MfsFile file, const char *caps);
 rpm_color_t mfsFileGetColor(MfsFile file);
 const ARGV_t mfsFileGetAttrs(MfsFile file);
 const char *mfsFileGetType(MfsFile file);
+int mfsFileOwningPackagesCount(MfsFile file);
+MfsPackage mfsFileOwningPackage(MfsFile file, int index);
 
 // Helper/Debug function - non guaranted API
 

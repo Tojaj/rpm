@@ -672,6 +672,12 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec,
 	context->state = MFS_CTXSTATE_UNKNOWN;
     }
 
+    // Free MfsFile stuff
+    for (MfsFilePackageList e = mfsfile->pkglist; e; ) {
+	MfsFilePackageList next = e->next;
+	free(e);
+	e = next;
+    }
     free(mfsfile);
     rpmcfFree(classified_file);
 
@@ -2446,6 +2452,14 @@ rpmRC mfsPackageAddFile(MfsPackage pkg, MfsFile file)
     mfslog_info("Adding %s to %s\n", file->diskpath, pkg->fullname);
 
     addFileListRecord(fl, file->flr);
+
+    // Prepend the package to mfsFile's list of owning packages
+    MfsFilePackageList e = xcalloc(1, sizeof(*e));
+    e->pkg = pkg->pkg;
+    e->spec = pkg->spec;
+    e->next = file->pkglist;
+    file->pkglist = e;
+
     return RPMRC_OK;
 }
 
@@ -2615,6 +2629,25 @@ const char *mfsFileGetType(MfsFile file)
 {
     assert(file);
     return rpmcfType(file->classified_file);
+}
+
+int mfsFileOwningPackagesCount(MfsFile file)
+{
+    assert(file);
+    int count = 0;
+    for (MfsFilePackageList e = file->pkglist; e; e = e->next)
+	count++;
+    return count;
+}
+
+MfsPackage mfsFileOwningPackage(MfsFile file, int index)
+{
+    assert(file);
+    int x = 0;
+    for (MfsFilePackageList e = file->pkglist; e; e=e->next, x++)
+	if (x == index)
+	    return mfsPackageFromPackage(e->spec, e->pkg);
+    return NULL;
 }
 
 /*
