@@ -410,10 +410,6 @@ const char *mfsFileGetType(MfsFile file);
 rpmRC mfsChangelogSetDateStr(MfsChangelog entry, const char *date);
 char *mfsDepGetFlagsStr(MfsDep entry);
 
-/* TODO:
- * - Set constranis to module name to [A-Za-z0-9_-]
- */
-
 #ifdef __cplusplus
 }
 #endif
