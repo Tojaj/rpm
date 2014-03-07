@@ -1064,7 +1064,7 @@ static void FileListFree(FileList fl)
 }
 
 /* forward ref */
-static rpmRC recurseDir(rpmSpec spec, FileList fl, const char * diskPath);
+static rpmRC recurseDir(rpmSpec spec, Package pkg, const char * diskPath);
 
 /* Hack up a stat structure for a %dev or non-existing %ghost */
 static struct stat * fakeStat(FileEntry cur, struct stat * statp)
@@ -1128,12 +1128,12 @@ void addFileListRecord(FileList fl, FileListRec flr)
 /**
  * Add a file to the package manifest.
  * @param spec		spec file
- * @param fl		package file tree walk data
+ * @param pkg		package
  * @param diskPath	path to file
  * @param statp		file stat (possibly NULL)
  * @return		RPMRC_OK on success
  */
-static rpmRC addFile(rpmSpec spec, FileList fl, const char * diskPath,
+static rpmRC addFile(rpmSpec spec, Package pkg, const char * diskPath,
 		struct stat * statp)
 {
     size_t plen = strlen(diskPath);
@@ -1146,6 +1146,7 @@ static rpmRC addFile(rpmSpec spec, FileList fl, const char * diskPath,
     const char *fileUname;
     const char *fileGname;
     rpmRC rc = RPMRC_FAIL; /* assume failure */
+    FileList fl = pkg->fl; /* Package file tree walk data */
 
     /* Strip trailing slash. The special case of '/' path is handled below. */
     if (plen > 0 && diskPath[plen - 1] == '/') {
@@ -1214,7 +1215,7 @@ static rpmRC addFile(rpmSpec spec, FileList fl, const char * diskPath,
 
     /* Don't recurse into explicit %dir, don't double-recurse from fts */
     if ((fl->cur.isDir != 1) && (statp == &statbuf) && S_ISDIR(statp->st_mode)) {
-	return recurseDir(spec, fl, diskPath);
+	return recurseDir(spec, pkg, diskPath);
     }
 
     fileMode = statp->st_mode;
@@ -1325,11 +1326,11 @@ exit:
 
 /**
  * Add directory (and all of its files) to the package manifest.
- * @param fl		package file tree walk data
+ * @param pkg		package
  * @param diskPath	path to file
  * @return		RPMRC_OK on success
  */
-static rpmRC recurseDir(rpmSpec spec, FileList fl, const char * diskPath)
+static rpmRC recurseDir(rpmSpec spec, Package pkg, const char * diskPath)
 {
     char * ftsSet[2];
     FTS * ftsp;
@@ -1347,7 +1348,7 @@ static rpmRC recurseDir(rpmSpec spec, FileList fl, const char * diskPath)
 	case FTS_SL:		/* symbolic link */
 	case FTS_SLNONE:	/* symbolic link without target */
 	case FTS_DEFAULT:	/* none of the above */
-	    rc = addFile(spec, fl, fts->fts_accpath, fts->fts_statp);
+	    rc = addFile(spec, pkg, fts->fts_accpath, fts->fts_statp);
 	    break;
 	case FTS_DOT:		/* dot or dot-dot */
 	case FTS_DP:		/* postorder directory */
@@ -1427,7 +1428,7 @@ static rpmRC processMetadataFile(rpmSpec spec, Package pkg, FileList fl,
     rc = RPMRC_OK;
 
     if (absolute)
-	rc = addFile(spec, fl, fn, NULL);
+	rc = addFile(spec, pkg, fn, NULL);
 
 exit:
     free(apkt);
@@ -1496,7 +1497,7 @@ static rpmRC processBinaryFile(rpmSpec spec, Package pkg, FileList fl,
 
 	if (rpmGlob(diskPath, &argc, &argv) == 0 && argc >= 1) {
 	    for (i = 0; i < argc; i++) {
-		rc = addFile(spec, fl, argv[i], NULL);
+		rc = addFile(spec, pkg, argv[i], NULL);
 	    }
 	    argvFree(argv);
 	} else {
@@ -1512,7 +1513,7 @@ static rpmRC processBinaryFile(rpmSpec spec, Package pkg, FileList fl,
 	    goto exit;
 	}
     } else {
-	rc = addFile(spec, fl, diskPath, NULL);
+	rc = addFile(spec, pkg, diskPath, NULL);
     }
 
 exit:
