@@ -143,7 +143,7 @@ void mfslog(int code, const char *fmt, ...)
 	va_end(ap);
 
 	free(msg_format);
-	rpmlog(code, msg);
+	rpmlog(code, "%s", msg);
 	free(msg);
     }
 }
