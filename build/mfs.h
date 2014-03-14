@@ -202,6 +202,7 @@ MfsPackage mfsSpecGetSourcePackage(MfsSpec spec);
  *		    Do not free the context!
  */
 rpmMacroContext mfsSpecGetMacroContext(MfsSpec spec);
+rpmRC mfsSpecExpandMacro(MfsSpec spec, char *sbuf, size_t slen);
 MfsBTScript mfsSpecGetScript(MfsSpec spec, MfsBTScriptType type);
 rpmRC mfsSpecSetScript(MfsSpec spec, MfsBTScript script, MfsBTScriptType type);
 void mfsSpecFree(MfsSpec spec);

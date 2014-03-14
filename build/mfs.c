@@ -983,6 +983,14 @@ rpmMacroContext mfsSpecGetMacroContext(MfsSpec spec)
     return spec->rpmspec->macros;
 }
 
+rpmRC mfsSpecExpandMacro(MfsSpec spec, char *sbuf, size_t slen)
+{
+    assert(spec && spec->rpmspec);
+    if (expandMacros(NULL, spec->rpmspec->macros, sbuf, slen) == 0)
+	return RPMRC_OK;
+    return RPMRC_FAIL;
+}
+
 MfsBTScript mfsSpecGetScript(MfsSpec spec, MfsBTScriptType type)
 {
     assert(spec && spec->rpmspec);
