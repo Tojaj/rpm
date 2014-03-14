@@ -1190,8 +1190,6 @@ const rpmTagVal * mfsPackageTags(void) {
     return array;
 }
 
-// TODO: RPMTAG_DESCRIPTION
-
 // This function mimics the findPreambleTag()
 rpmRC mfsPackageSetTag(MfsPackage pkg,
 		       rpmTagVal tag,
@@ -1248,6 +1246,31 @@ rpmRC mfsPackageSetTag(MfsPackage pkg,
 		rpmTagGetName(tag), value, opt ? opt : "NULL", pkg->fullname);
 
     rc = applyPreambleTag(pkg->spec, pkg->pkg, tag, macro, opt, value);
+
+    return rc;
+}
+
+char *mfsPackageGetDescription(MfsPackage pkg)
+{
+    assert(pkg);
+    return mstrdup(headerGetString(pkg->pkg->header, RPMTAG_DESCRIPTION));
+}
+
+rpmRC mfsPackageSetDescription(MfsPackage pkg, const char *description, const char *lang)
+{
+    rpmRC rc = RPMRC_OK;
+    StringBuf sb = newStringBuf();
+
+    if (!lang)
+	lang = RPMBUILD_DEFAULT_LANG;
+
+    appendStringBuf(sb, description);
+    stripTrailingBlanksStringBuf(sb);
+
+    if (addLangTag(pkg->spec, pkg->pkg->header,
+		   RPMTAG_DESCRIPTION, getStringBuf(sb), lang)) {
+	rc = RPMRC_FAIL;
+    }
 
     return rc;
 }

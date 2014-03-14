@@ -227,7 +227,7 @@ rpmRC mfsPackageFinalize(MfsPackage mfspkg);
 Header mfsPackageGetHeader(MfsPackage pkg);
 const rpmTagVal * mfsPackageTags(void);
 
-/* Set the tag value to the package.
+/* Set the preamble tag value to the package.
  * List of tags supported by the function is returned by the mfsPackageTags().
  * @param pkg	    Package
  * @param tag	    Header tag (RPMTAG_NAME, etc.)
@@ -255,6 +255,11 @@ rpmRC mfsPackageSetTag(MfsPackage pkg,
 		       rpmTagVal tag,
 		       const char *value,
 		       const char *opt);
+
+char *mfsPackageGetDescription(MfsPackage pkg);
+rpmRC mfsPackageSetDescription(MfsPackage pkg,
+			       const char *description,
+			       const char *lang);
 
 MfsScript mfsPackageGetScript(MfsPackage pkg, MfsScriptType type);
 rpmRC mfsPackageSetScript(MfsPackage pkg, MfsScript script, MfsScriptType type);
