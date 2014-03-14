@@ -1290,13 +1290,16 @@ char *mfsPackageGetDescription(MfsPackage pkg)
 
 rpmRC mfsPackageSetDescription(MfsPackage pkg, const char *description, const char *lang)
 {
+    assert(pkg && description);
     rpmRC rc = RPMRC_OK;
     StringBuf sb = newStringBuf();
+    char *edescription = rpmExpand(description, NULL);
 
     if (!lang)
 	lang = RPMBUILD_DEFAULT_LANG;
 
-    appendStringBuf(sb, description);
+    appendStringBuf(sb, edescription);
+    free(edescription);
     stripTrailingBlanksStringBuf(sb);
 
     if (addLangTag(pkg->spec, pkg->pkg->header,
