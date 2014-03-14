@@ -1230,6 +1230,7 @@ rpmRC mfsPackageSetTag(MfsPackage pkg,
 {
     rpmRC rc;
     const char *macro;
+    char *evalue; // Expanded value
     PreambleRec p;
 
     if (!value) {
@@ -1274,10 +1275,12 @@ rpmRC mfsPackageSetTag(MfsPackage pkg,
 	    opt = "";
     }
 
+    evalue = rpmExpand(value, NULL);
     mfslog_info("Setting tag %s: \"%s\" (%s) to %s\n",
-		rpmTagGetName(tag), value, opt ? opt : "NULL", pkg->fullname);
+		rpmTagGetName(tag), evalue, opt ? opt : "NULL", pkg->fullname);
 
-    rc = applyPreambleTag(pkg->spec, pkg->pkg, tag, macro, opt, value);
+    rc = applyPreambleTag(pkg->spec, pkg->pkg, tag, macro, opt, evalue);
+    free(evalue);
 
     return rc;
 }
