@@ -252,17 +252,16 @@ rpmRC fileFunc(MfsContext context, MfsFile file)
 {
     SharedData data = mfsContextGetData(context);
     ARGV_t langs = mfsFileGetLangs(file);
-    int include_in_original = 0;
+    int include_in_original = 1;
 
     for (int x=0; langs && langs[x]; x++) {
 	MfsPackage pkg = findPkg(data, langs[x]);
-	if (!pkg) {
-	    include_in_original = 1;
+	if (!pkg)
 	    continue;
-	}
 	mfslog_info("Langsubpackage for \"%s\" will contain: %s\n",
 		    langs[x], mfsFileGetPath(file));
 	mfsPackageAddFile(pkg, file);
+	include_in_original = 0;
     }
     argvFree(langs);
 
