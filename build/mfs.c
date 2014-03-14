@@ -118,6 +118,29 @@ static void argvDelete(ARGV_t argv, int i)
 	argv[x] = argv[x+1];
 }
 
+int mfsAsprintf(char **strp, const char *fmt, ...)
+{
+    va_list ap;
+    int n;
+
+    va_start(ap, fmt);
+    n = vsnprintf(NULL, 0, fmt, ap);
+    va_end(ap);
+
+    if (n >= 0) {
+	size_t nb = n + 1;
+	char *msg = xmalloc(nb);
+	va_start(ap, fmt);
+	vsnprintf(msg, nb, fmt, ap);
+	va_end(ap);
+	*strp = msg;
+    } else {
+	*strp = NULL;
+    }
+
+    return n;
+}
+
 void mfslog(int code, const char *fmt, ...)
 {
     va_list ap;

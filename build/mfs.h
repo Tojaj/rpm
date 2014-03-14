@@ -416,6 +416,7 @@ MfsPackage mfsFileGetOriginalDestination(MfsFile file);
 
 // Helper/Debug function - non guaranted API
 
+int mfsAsprintf(char **strp, const char *fmt, ...);
 rpmRC mfsChangelogSetDateStr(MfsChangelog entry, const char *date);
 char *mfsDepGetFlagsStr(MfsDep entry);
 char *mfsSpecGetArch(MfsSpec spec);
