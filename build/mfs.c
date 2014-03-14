@@ -923,6 +923,13 @@ rpmRC mfsSpecSetString(MfsSpec spec, MfsSpecAttr attr, const char *str)
     return rc;
 }
 
+char *mfsSpecGetArch(MfsSpec spec)
+{
+    assert(spec && spec->rpmspec);
+    // initSourceHeader() takes arch directly from the first (main) package too
+    return mstrdup(headerGetString(spec->rpmspec->packages->header, RPMTAG_ARCH));
+}
+
 int mfsSpecPackageCount(MfsSpec spec)
 {
     assert(spec && spec->rpmspec);

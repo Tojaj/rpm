@@ -413,6 +413,7 @@ MfsPackage mfsFileGetOriginalDestination(MfsFile file);
 
 rpmRC mfsChangelogSetDateStr(MfsChangelog entry, const char *date);
 char *mfsDepGetFlagsStr(MfsDep entry);
+char *mfsSpecGetArch(MfsSpec spec);
 
 #ifdef __cplusplus
 }
