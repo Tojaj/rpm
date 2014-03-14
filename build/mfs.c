@@ -1146,49 +1146,55 @@ MfsPackage mfsPackageNew(MfsContext context,
 			 int flags)
 {
     int flag = 0;
-    MfsPackage mfs_pkg;
+    MfsPackage mfs_pkg = NULL;
     rpmSpec spec = context->spec;
     char *fullname;
+    char *ename = NULL; // Expanded name
+    char *esummary = NULL; // Expanded summary
     Package pkg;
+
+    ename = rpmExpand(name, NULL);
 
     if (context->state != MFS_CTXSTATE_BUILDHOOK) {
 	mfslog_err(_("Packages must be added in a build hook. "
-			     "Cannot add: %s\n"), name);
-	return NULL;
+			     "Cannot add: %s\n"), ename);
+	goto error;
     } else if (context->lastpoint > MFS_HOOK_POINT_POSTCHECK) {
 	mfslog_err(_("Packages cannot be added after at this point "
-			     "of process. Cannot add: %s\n"), name);
-	return NULL;
+			     "of process. Cannot add: %s\n"), ename);
+	goto error;
     }
 
     if (!spec->packages) {
         // This should be a first package
         // Spec doesn't have defined any packages - nothing to do
         // This is an artificial limitation
-        mfslog_err(_("No main package exist. Cannot add: %s\n"), name);
-        return NULL;
+        mfslog_err(_("No main package exist. Cannot add: %s\n"), ename);
+	goto error;
     }
 
     if (flags & MFS_PACKAGE_FLAG_SUBNAME)
         flag = PART_SUBNAME;
 
-    if (!lookupPackage(spec, name, flag, NULL)) {
-        mfslog_err(_("Package already exists: %s\n"), name);
-        return NULL;
+    if (!lookupPackage(spec, ename, flag, NULL)) {
+        mfslog_err(_("Package already exists: %s\n"), ename);
+	goto error;
     }
 
     if (flag == PART_SUBNAME) {
         rasprintf(&fullname, "%s-%s",
-                headerGetString(spec->packages->header, RPMTAG_NAME), name);
+                headerGetString(spec->packages->header, RPMTAG_NAME), ename);
     } else
-        fullname = mstrdup(name);
+        fullname = mstrdup(ename);
 
     mfslog_info("Adding new subpackage \"%s\"\n", fullname);
 
     pkg = newPackage(fullname, spec->pool, &spec->packages);
 
     headerPutString(pkg->header, RPMTAG_NAME, fullname);
-    addLangTag(spec, pkg->header, RPMTAG_SUMMARY, summary, RPMBUILD_DEFAULT_LANG);
+
+    esummary = rpmExpand(summary, NULL);
+    addLangTag(spec, pkg->header, RPMTAG_SUMMARY, esummary, RPMBUILD_DEFAULT_LANG);
 
     pkg->fileList = argvNew();
 
@@ -1197,6 +1203,9 @@ MfsPackage mfsPackageNew(MfsContext context,
     mfs_pkg->fullname = fullname;
     mfs_pkg->spec = spec;
 
+error:
+    free(ename);
+    free(esummary);
     return mfs_pkg;
 }
 
