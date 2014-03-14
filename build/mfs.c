@@ -667,8 +667,12 @@ rpmRC mfsManagerCallFileHooks(MfsManager mm, rpmSpec cur_spec, Package pkg,
 	}
 
 	// Get info from the MfsFile and free it
-	if (!mfsfile->include_in_original)
+	if (!mfsfile->include_in_original && local_include_in_original) {
 	    local_include_in_original = 0;
+	    mfslog_info(_("File %s won't be included in its original "
+			"destination package \"%s\"\n"), rec->diskPath,
+			(pkg) ? headerGetString(pkg->header, RPMTAG_NAME): "(None)");
+	}
 	mfsFreeDuppedFileListRec(mfsfile->flr);
 
 	context->state = MFS_CTXSTATE_UNKNOWN;
