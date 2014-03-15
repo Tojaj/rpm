@@ -152,6 +152,10 @@ struct MfsFileFiles_s {
     ARGV_t filefiles;
 };
 
+struct MfsPolicies_s {
+    ARGV_t policies;
+};
+
 /** List for packages that includes a file
  */
 struct MfsFilePackageList_s {

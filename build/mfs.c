@@ -2509,6 +2509,50 @@ ARGV_t mfsFileFilesGetAll(MfsFileFiles ffiles)
     return argvCopy(ffiles->filefiles);
 }
 
+// Policies
+
+void mfsPoliciesFree(MfsPolicies policies)
+{
+    if (!policies)
+	return;
+    argvFree(policies->policies);
+    free(policies);
+}
+
+int mfsPoliciesCount(MfsPolicies policies)
+{
+    assert(policies);
+    return argvCount(policies->policies);
+}
+
+char *mfsPoliciesGetFn(MfsPolicies policies, int index)
+{
+    assert(policies);
+    if (index >= 0 && index < argvCount(policies->policies))
+    return xstrdup(policies->policies[index]);
+    return NULL;
+}
+
+rpmRC mfsPoliciesAppend(MfsPolicies policies, const char *flist)
+{
+    assert(policies);
+    argvAdd(&policies->policies, flist);
+    return RPMRC_OK;
+}
+
+rpmRC mfsPoliciesDelete(MfsPolicies policies, int index)
+{
+    assert(policies);
+    argvDelete(policies->policies, index);
+    return RPMRC_OK;
+}
+
+ARGV_t mfsPoliciesGetAll(MfsPolicies policies)
+{
+    assert(policies);
+    return argvCopy(policies->policies);
+}
+
 /*
  * Package hook related functions
  */
