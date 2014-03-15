@@ -1140,6 +1140,12 @@ void mfsPackageFree(MfsPackage pkg)
     }
 }
 
+void *mfsPackageId(MfsPackage pkg)
+{
+    if (!pkg) return NULL;
+    return (void*) pkg->pkg;
+}
+
 MfsPackage mfsPackageNew(MfsContext context,
 			 const char *name,
 			 const char *summary,

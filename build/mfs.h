@@ -217,6 +217,16 @@ rpmRC mfsBTScriptAppendLine(MfsBTScript script, const char *code);
 // Add Package Hook Related API
 
 void mfsPackageFree(MfsPackage pkg);
+
+/** Each MfsPackage is always newly malloced.
+ * Its memory address thus cannot be used for identification
+ * of an underlaying rpmbuild package.
+ * This function returns the memory address of the underlaying package
+ * and this address can be used for unique identifiaction,
+ * which is helpful for stuff like package comparison,
+ * e.g. Are two MfsPackages representing the same one?, etc.
+ */
+void *mfsPackageId(MfsPackage pkg);
 MfsPackage mfsPackageNew(MfsContext context,
 			 const char *name,
 			 const char *summary,
