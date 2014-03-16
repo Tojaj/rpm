@@ -1698,9 +1698,12 @@ rpmRC mfsPackageSetTriggers(MfsPackage pkg, MfsTriggers triggers)
     }
     pkg->pkg->triggerFiles = NULL;
 
+    mfslog_info("Setting new triggers for %s:\n", pkg->fullname);
+
     // Gen the new triggerFiles
     for (MfsTrigger e=triggers->entries; e; e=e->next) {
 	MfsDeps deps;
+	MfsScript script = e->script;
 	int index, num_of_deps;
 
 	// Gen a new entry to triggerFiles
@@ -1708,6 +1711,12 @@ rpmRC mfsPackageSetTriggers(MfsPackage pkg, MfsTriggers triggers)
 	    e->script->prog = mstrdup("/bin/sh");
 
 	index = addTriggerIndex(pkg, e);
+
+	mfslog_info("%d) Trigger:\n", index);
+	mfslog_info(" - Script prog:  %s\n", script->prog ? script->prog : "");
+	mfslog_info(" - Script file:  %s\n", script->file ? script->file : "");
+	mfslog_info(" - Script flags: %d\n", script->flags);
+	mfslog_info(" - Script code:\n%s\n", script->code ? script->code : "");
 
 	// Append trigger's deps to the global trigger deps
 	deps = mfsTriggerGetDeps(e);
@@ -1975,7 +1984,8 @@ rpmRC mfsPackageSetDeps(MfsPackage pkg, MfsDeps deps, MfsDepType deptype)
     rpmdsFree(*ds);
     *ds = NULL;
 
-    mfslog_info("Setting new dependencies for %s\n", pkg->fullname);
+    mfslog_info("Setting new \"%s\" dependencies for %s\n",
+		enumDepTypeToStr(deptype), pkg->fullname);
 
     // Set the new dependencies
     for (MfsDep e = deps->entries; e; e = e->next) {
