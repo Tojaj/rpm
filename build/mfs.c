@@ -94,6 +94,24 @@ static const char *enumScriptTypeValToStr(MfsScriptType val)
     return "UNKNOWN";
 }
 
+static const char *enumDepTypeToStr(MfsDepType val)
+{
+    switch (val) {
+    case MFS_DEP_TYPE_REQUIRES:	    return "requires";
+    case MFS_DEP_TYPE_PROVIDES:	    return "provides";
+    case MFS_DEP_TYPE_CONFLICTS:    return "conflicts";
+    case MFS_DEP_TYPE_OBSOLETES:    return "obsoletes";
+    case MFS_DEP_TYPE_TRIGGERS:	    return "triggers";
+    case MFS_DEP_TYPE_ORDER:	    return "order";
+    case MFS_DEP_TYPE_RECOMMENDS:   return "recommends";
+    case MFS_DEP_TYPE_SUGGESTS:	    return "suggests";
+    case MFS_DEP_TYPE_SUPPLEMENTS:  return "supplements";
+    case MFS_DEP_TYPE_ENHANCES:	    return "enhances";
+    default: break;
+    }
+    return "UNKNOWN";
+}
+
 static inline char *mstrdup(const char *str)
 {
     if (!str) return NULL;
