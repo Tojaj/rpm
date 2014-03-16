@@ -121,6 +121,19 @@ struct MfsScript_s {
     rpmscriptFlags flags;
 };
 
+/* Trigger is combination of script and dependencies.
+ */
+struct MfsTrigger_s {
+    MfsTriggerType type;
+    MfsScript script;
+    MfsDeps deps;
+    struct MfsTrigger_s *next;
+};
+
+struct MfsTriggers_s {
+    struct MfsTrigger_s *entries;
+};
+
 struct MfsChangelog_s {
     rpm_time_t time;  // uint32_t
     char *name;

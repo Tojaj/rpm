@@ -1571,6 +1571,160 @@ rpmRC mfsPackageDeleteScript(MfsPackage pkg, MfsScriptType type)
     return RPMRC_OK;
 }
 
+MfsTriggers mfsPackageGetTriggers(MfsPackage pkg)
+{
+    assert(pkg);
+
+    MfsTriggers triggers = NULL;
+    MfsDeps deps = mfsPackageGetDeps(pkg, MFS_DEP_TYPE_TRIGGERS);
+    MfsTrigger *last;
+    int num_of_deps;
+
+    if (!deps)
+	return NULL;
+
+    num_of_deps = mfsDepsCount(deps);
+
+    // Prepare trigger records
+    triggers = xcalloc(1, sizeof(*triggers));
+    last = &triggers->entries;
+    for (struct TriggerFileEntry *e = pkg->pkg->triggerFiles; e; e = e->next) {
+	int index = e->index;
+
+	MfsDeps trigger_deps;
+	MfsTrigger trigger = mfsTriggerNew();
+
+	trigger->script = mfsScriptNew();
+	mfsScriptSetCode(trigger->script, e->script);
+	mfsScriptSetProg(trigger->script, e->prog);
+	mfsScriptSetFile(trigger->script, e->fileName);
+	mfsScriptSetFlags(trigger->script, e->flags);
+
+	// Get deps related to the trigger
+	trigger_deps = xcalloc(1, sizeof(*trigger_deps));
+	for (int di=0; di < num_of_deps; di++) {
+	    MfsDep dep = mfsDepsGetEntry(deps, di);
+	    if (index != mfsDepGetIndex(dep))
+		continue;
+	    mfsDepsAppend(trigger_deps, mfsDepCopy(dep));
+	    // Set trigger type
+	    if (mfsDepGetFlags(dep) & RPMSENSE_TRIGGERPREIN)
+		trigger->type = MFS_TRIGGER_PREIN;
+	    else if (mfsDepGetFlags(dep) & RPMSENSE_TRIGGERUN)
+		trigger->type = MFS_TRIGGER_UN;
+	    else if (mfsDepGetFlags(dep) & RPMSENSE_TRIGGERPOSTUN)
+		trigger->type = MFS_TRIGGER_POSTUN;
+	    else
+		trigger->type = MFS_TRIGGER_IN;
+	}
+	trigger->deps = trigger_deps;
+
+	*last = trigger;
+	last = &trigger->next;
+    }
+
+    mfsDepsFree(deps);
+    return triggers;
+}
+
+static int addTriggerIndex(MfsPackage pkg, MfsTrigger trigger)
+{
+    struct TriggerFileEntry *tfe;
+    struct TriggerFileEntry *list = pkg->pkg->triggerFiles;
+    struct TriggerFileEntry *last = NULL;
+    int index = 0;
+    MfsScript script = trigger->script; // Shortcut
+
+    while (list) {
+	last = list;
+	list = list->next;
+    }
+
+    if (last)
+	index = last->index + 1;
+
+    tfe = xcalloc(1, sizeof(*tfe));
+
+    tfe->fileName = (script->file) ? xstrdup(script->file) : NULL;
+    tfe->script = (script->code && *(script->code) != '\0') ? xstrdup(script->code) : NULL;
+    tfe->prog = mstrdup(script->prog);
+    tfe->flags = script->flags;
+    tfe->index = index;
+    tfe->next = NULL;
+
+    if (last)
+	last->next = tfe;
+    else
+	pkg->pkg->triggerFiles = tfe;
+
+    return index;
+
+}
+
+rpmRC mfsPackageSetTriggers(MfsPackage pkg, MfsTriggers triggers)
+{
+    assert(pkg);
+    assert(triggers);
+
+    int rc = RPMRC_OK;
+    MfsDeps alldeps;
+
+    // Free the old triggerFiles in the pkg
+    for (struct TriggerFileEntry *e = pkg->pkg->triggerFiles; e;) {
+	struct TriggerFileEntry *next = e->next;
+	free(e->fileName);
+	free(e->script);
+	free(e->prog);
+	free(e);
+	e = next;
+    }
+    pkg->pkg->triggerFiles = NULL;
+
+    // Gen the new triggerFiles
+    for (MfsTrigger e=triggers->entries; e; e=e->next) {
+	MfsDeps deps;
+	int index, num_of_deps;
+
+	// Gen a new entry to triggerFiles
+	if (!e->script->prog)
+	    e->script->prog = mstrdup("/bin/sh");
+
+	index = addTriggerIndex(pkg, e);
+
+	// Append trigger's deps to the global trigger deps
+	deps = mfsTriggerGetDeps(e);
+	num_of_deps = mfsDepsCount(deps);
+	for (int x=0; x < num_of_deps; x++) {
+	    MfsDep dep = mfsDepsGetEntry(deps, x);
+	    dep = mfsDepCopy(dep);
+	    rpmsenseFlags flags = mfsDepGetFlags(dep);
+
+	    // Set proper trigger flags
+	    flags &= ~RPMSENSE_TRIGGER;
+	    if (e->type == MFS_TRIGGER_PREIN)
+		flags |= RPMSENSE_TRIGGERPREIN;
+	    else if (e->type == MFS_TRIGGER_UN)
+		flags |= RPMSENSE_TRIGGERUN;
+	    else if (e->type == MFS_TRIGGER_POSTUN)
+		flags |= RPMSENSE_TRIGGERPOSTUN;
+	    else
+		flags |= RPMSENSE_TRIGGERIN;
+	    mfsDepSetFlags(dep, flags);
+
+	    // Set proper trigger index
+	    mfsDepSetIndex(dep, index);
+
+	    mfsDepsAppend(alldeps, dep);
+	}
+
+	mfsDepsFree(deps);
+    }
+
+    rc = mfsPackageSetDeps(pkg, alldeps, MFS_DEP_TYPE_TRIGGERS);
+    mfsDepsFree(alldeps);
+    return rc;
+}
+
 MfsChangelogs mfsPackageGetChangelogs(MfsPackage pkg)
 {
     assert(pkg);
@@ -1894,6 +2048,17 @@ MfsScript mfsScriptNew(void)
     return script;
 }
 
+MfsScript mfsScriptCopy(MfsScript script)
+{
+    if (!script) return NULL;
+    MfsScript new_script = mfsScriptNew();
+    mfsScriptSetCode(new_script, script->code);
+    mfsScriptSetProg(new_script, script->prog);
+    mfsScriptSetFile(new_script, script->file);
+    mfsScriptSetFlags(new_script, script->flags);
+    return new_script;
+}
+
 void mfsScriptFree(MfsScript script)
 {
     if (!script)
@@ -1956,6 +2121,209 @@ rpmRC mfsScriptSetFlags(MfsScript script, MfsScriptFlags flags)
 {
     assert(script);
     script->flags = flags;
+    return RPMRC_OK;
+}
+
+// Triggers
+
+void mfsTriggersFree(MfsTriggers triggers)
+{
+    if (!triggers)
+	return;
+    for (MfsTrigger e = triggers->entries; e;) {
+	MfsTrigger next = e->next;
+	mfsTriggerFree(e);
+	e = next;
+    }
+    free(triggers);
+}
+
+int mfsTriggersCount(MfsTriggers triggers)
+{
+    assert(triggers);
+    int x = 0;
+    MfsTrigger entry = triggers->entries;
+    while (entry) {
+	entry = entry->next;
+	x++;
+    }
+    return x;
+}
+
+rpmRC mfsTriggersAppend(MfsTriggers triggers, MfsTrigger entry)
+{
+    return mfsTriggersInsert(triggers, entry, -1);
+}
+
+rpmRC mfsTriggersInsert(MfsTriggers triggers, MfsTrigger entry, int index)
+{
+    assert(triggers);
+    assert(entry);
+
+    int x = 0;
+    MfsTrigger prev = NULL;
+    MfsTrigger cur_entry = triggers->entries;
+
+    if (!entry->script || !entry->deps) {
+	mfslog_err(_("Incomplete trigger entry\n"));
+	return RPMRC_FAIL;
+    }
+
+    if (index == 0 || (index == -1 && !cur_entry)) {
+	entry->next = triggers->entries;
+        triggers->entries = entry;
+	return RPMRC_OK;
+    }
+
+    if (!cur_entry)
+	goto trigger_entry_insert_error;
+
+    while (1) {
+	x++;
+	prev = cur_entry;
+	cur_entry = cur_entry->next;
+
+	if ((index == x) || (index == -1 && !cur_entry)) {
+	    prev->next = entry;
+	    entry->next = cur_entry;
+	    break;
+	}
+
+	if (index != -1 && !cur_entry)
+	    goto trigger_entry_insert_error;
+    }
+
+    return RPMRC_OK;
+
+trigger_entry_insert_error:
+
+    mfslog_err(_("Trigger entry cannot be inserted to the specified index\n"));
+    return RPMRC_FAIL;
+}
+
+rpmRC mfsTriggersDelete(MfsTriggers triggers, int index)
+{
+    assert(triggers);
+
+    int x = 0;
+    MfsTrigger prev = NULL;
+    MfsTrigger cur_entry = triggers->entries;
+
+    if (!cur_entry)
+	goto trigger_entry_delete_error;
+
+    if (index == 0 || (index == -1 && !cur_entry->next)) {
+        triggers->entries = cur_entry->next;
+	mfsTriggerFree(cur_entry);
+	return RPMRC_OK;
+    }
+
+    while (1) {
+	x++;
+	prev = cur_entry;
+	cur_entry = cur_entry->next;
+
+	if (!cur_entry)
+	    goto trigger_entry_delete_error;
+
+	if ((index == x) || (index == -1 && !cur_entry->next)) {
+	    prev->next = cur_entry->next;
+	    mfsTriggerFree(cur_entry);
+	    break;
+	}
+    }
+
+    return RPMRC_OK;
+
+trigger_entry_delete_error:
+
+    mfslog_err(_("Trigger entry doesn't exist\n"));
+    return RPMRC_FAIL;
+
+}
+
+const MfsTrigger mfsTriggersGetEntry(MfsTriggers triggers, int index)
+{
+    assert(triggers);
+    int x = 0;
+    MfsTrigger entry = triggers->entries;
+    while (entry) {
+	if (x == index)
+	    break;
+	if (index == -1 && !entry->next)
+	    break;
+	entry = entry->next;
+	x++;
+    }
+
+    return entry;
+}
+
+MfsTrigger mfsTriggerNew(void)
+{
+    MfsTrigger entry = xcalloc(1, sizeof(*entry));
+    return entry;
+}
+
+MfsTrigger mfsTriggerCopy(MfsTrigger trigger)
+{
+    MfsTrigger new_trigger = mfsTriggerNew();
+    new_trigger->script = mfsScriptCopy(trigger->script);
+    new_trigger->deps = mfsDepsCopy(trigger->deps);
+    return new_trigger;
+}
+
+void mfsTriggerFree(MfsTrigger trigger)
+{
+    if (!trigger)
+	return;
+    mfsScriptFree(trigger->script);
+    mfsDepsFree(trigger->deps);
+    free(trigger);
+}
+
+MfsTriggerType mfsTriggerGetType(MfsTrigger trigger)
+{
+    assert(trigger);
+    return trigger->type;
+}
+
+rpmRC mfsTriggerSetType(MfsTrigger trigger, MfsScriptType type)
+{
+    assert(trigger);
+    trigger->type = type;
+    return RPMRC_OK;
+}
+
+MfsScript mfsTriggerGetScript(MfsTrigger trigger)
+{
+    assert(trigger);
+    return mfsScriptCopy(trigger->script);
+}
+
+rpmRC mfsTriggerSetScript(MfsTrigger trigger, MfsScript script)
+{
+    assert(trigger);
+    assert(script);
+
+    mfsScriptFree(trigger->script);
+    trigger->script = script;
+    return RPMRC_OK;
+}
+
+MfsDeps mfsTriggerGetDeps(MfsTrigger trigger)
+{
+    assert(trigger);
+    return mfsDepsCopy(trigger->deps);
+}
+
+rpmRC mfsTriggerSetDeps(MfsTrigger trigger, MfsDeps deps)
+{
+    assert(trigger);
+    assert(deps);
+
+    mfsDepsFree(trigger->deps);
+    trigger->deps = deps;
     return RPMRC_OK;
 }
 
@@ -2203,6 +2571,17 @@ void mfsDepsFree(MfsDeps deps) {
     free(deps);
 }
 
+MfsDeps mfsDepsCopy(MfsDeps deps)
+{
+    MfsDeps new_deps = calloc(1, sizeof(new_deps));
+    int num_of_deps = mfsDepsCount(deps);
+    for (int x=0; x < num_of_deps; x++) {
+	MfsDep dep = mfsDepsGetEntry(deps, x);
+	mfsDepsAppend(new_deps, mfsDepCopy(dep));
+    }
+    return new_deps;
+}
+
 int mfsDepsCount(MfsDeps deps)
 {
     assert(deps);
@@ -2341,6 +2720,7 @@ MfsDep mfsDepCopy(MfsDep entry)
     copy->name = mstrdup(entry->name);
     copy->version = mstrdup(entry->version);
     copy->flags = entry->flags;
+    copy->index = entry->index;
     return copy;
 }
 

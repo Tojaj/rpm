@@ -105,8 +105,8 @@ typedef enum MfsScriptType_e {
 } MfsScriptType;
 
 typedef enum MfsTriggerType_e {
-    MFS_TRIGGER_PREIN,
     MFS_TRIGGER_IN,
+    MFS_TRIGGER_PREIN,
     MFS_TRIGGER_UN,
     MFS_TRIGGER_POSTUN,
     MFS_TRIGGER_SENTINEL /*!< The last element of the list */
@@ -297,6 +297,7 @@ rpmRC mfsPackageSetPolicies(MfsPackage pkg, MfsPolicies policies);
 // Scripts
 
 MfsScript mfsScriptNew(void);
+MfsScript mfsScriptCopy(MfsScript script);
 void mfsScriptFree(MfsScript script);
 char *mfsScriptGetCode(MfsScript script);
 char *mfsScriptGetProg(MfsScript script);
@@ -307,30 +308,24 @@ rpmRC mfsScriptSetProg(MfsScript script, const char *prog);
 rpmRC mfsScriptSetFile(MfsScript script, const char *fn);
 rpmRC mfsScriptSetFlags(MfsScript script, MfsScriptFlags flags);
 
-// Triggers - Not implemented yet
+// Triggers
 
-/*
 void mfsTriggersFree(MfsTriggers triggers);
 int mfsTriggersCount(MfsTriggers triggers);
-rpmRC mfsTriggersAppend(MfsTriggers triggers, MfsChangelog entry);
-rpmRC mfsTriggersInsert(MfsTriggers triggers, MfsChangelog entry, int index);
+rpmRC mfsTriggersAppend(MfsTriggers triggers, MfsTrigger entry);
+rpmRC mfsTriggersInsert(MfsTriggers triggers, MfsTrigger entry, int index);
 rpmRC mfsTriggersDelete(MfsTriggers triggers, int index);
 const MfsTrigger mfsTriggersGetEntry(MfsTriggers triggers, int index);
 
-MfsTrigger mfsTriggerNew();
+MfsTrigger mfsTriggerNew(void);
 MfsTrigger mfsTriggerCopy(MfsTrigger trigger);
 void mfsTriggerFree(MfsTrigger trigger);
-char *mfsTriggerGetCode(MfsTrigger trigger);
-char *mfsTriggerGetProg(MfsTrigger trigger);
-char *mfsTriggerGetFile(MfsTrigger trigger);
-MfsScriptFlags mfsTriggerGetFlags(MfsTrigger trigger);
 MfsTriggerType mfsTriggerGetType(MfsTrigger trigger);
-rpmRC mfsTriggerSetCode(MfsTrigger trigger, const char *code);
-rpmRC mfsTriggerSetProg(MfsTrigger trigger, const char *prog);
-rpmRC mfsTriggerSetFile(MfsTrigger trigger, const char *fn);
-rpmRC mfsTriggerSetFlags(MfsTrigger trigger, MfsScriptFlags flags);
 rpmRC mfsTriggerSetType(MfsTrigger trigger, MfsScriptType type);
-*/
+MfsScript mfsTriggerGetScript(MfsTrigger trigger);
+rpmRC mfsTriggerSetScript(MfsTrigger trigger, MfsScript script);
+MfsDeps mfsTriggerGetDeps(MfsTrigger trigger);
+rpmRC mfsTriggerSetDeps(MfsTrigger trigger, MfsDeps deps);
 
 // Changelogs
 
@@ -355,6 +350,7 @@ rpmRC mfsChangelogSetText(MfsChangelog entry, const char *text);
 // Dependencies
 
 void mfsDepsFree(MfsDeps deps);
+MfsDeps mfsDepsCopy(MfsDeps deps);
 int mfsDepsCount(MfsDeps deps);
 rpmRC mfsDepsAppend(MfsDeps deps, MfsDep dep);
 rpmRC mfsDepsInsert(MfsDeps deps, MfsDep dep, int index);
@@ -366,6 +362,8 @@ MfsDep mfsDepCopy(MfsDep dep);
 void mfsDepFree(MfsDep dep);
 char *mfsDepGetName(MfsDep entry);
 char *mfsDepGetVersion(MfsDep entry);
+/* For available flags see enum rpmsenseFlags_e from rpmds.h
+ */
 rpmsenseFlags mfsDepGetFlags(MfsDep entry);
 uint32_t mfsDepGetIndex(MfsDep entry);
 rpmRC mfsDepSetName(MfsDep entry, const char *name);
