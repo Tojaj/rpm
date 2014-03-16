@@ -1334,6 +1334,7 @@ rpmRC mfsPackageSetDescription(MfsPackage pkg, const char *description, const ch
 	rc = RPMRC_FAIL;
     }
 
+    freeStringBuf(sb);
     return rc;
 }
 
