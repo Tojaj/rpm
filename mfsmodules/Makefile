@@ -11,5 +11,8 @@ $(CC) $(CFLAGS) testmodule.c $(LINKFLAGS) -o testmodule.so
 langsubpackagesmodule:
 	$(CC) $(CFLAGS) langsubpackagesmodule.c $(LINKFLAGS) -o langsubpackagesmodule.so
 
+debuginfomodule:
+	$(CC) $(CFLAGS) debuginfomodule.c $(LINKFLAGS) -o debuginfomodule.so
+
 clean:
 rm -f *.so
