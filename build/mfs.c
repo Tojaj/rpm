@@ -1667,7 +1667,7 @@ rpmRC mfsPackageSetTriggers(MfsPackage pkg, MfsTriggers triggers)
     assert(triggers);
 
     int rc = RPMRC_OK;
-    MfsDeps alldeps;
+    MfsDeps alldeps = mfsDepsNew();
 
     // Free the old triggerFiles in the pkg
     for (struct TriggerFileEntry *e = pkg->pkg->triggerFiles; e;) {
@@ -1844,7 +1844,7 @@ MfsDeps mfsPackageGetDeps(MfsPackage pkg, MfsDepType deptype)
     flagstag = rec->flagstag;
     indextag = rec->indextag;
 
-    MfsDeps deps = xcalloc(1, sizeof(*deps));
+    MfsDeps deps = mfsDepsNew();
     MfsDep *last = &deps->entries;
 
     rpmtd depnames = rpmtdNew();
@@ -2560,6 +2560,11 @@ rpmRC mfsChangelogSetText(MfsChangelog entry, const char *text)
 
 // Dependencies
 
+MfsDeps mfsDepsNew(void) {
+    MfsDeps deps = calloc(1, sizeof(deps));
+    return deps;
+}
+
 void mfsDepsFree(MfsDeps deps) {
     if (!deps)
 	return;
@@ -2573,7 +2578,7 @@ void mfsDepsFree(MfsDeps deps) {
 
 MfsDeps mfsDepsCopy(MfsDeps deps)
 {
-    MfsDeps new_deps = calloc(1, sizeof(new_deps));
+    MfsDeps new_deps = mfsDepsNew();
     int num_of_deps = mfsDepsCount(deps);
     for (int x=0; x < num_of_deps; x++) {
 	MfsDep dep = mfsDepsGetEntry(deps, x);

@@ -349,6 +349,7 @@ rpmRC mfsChangelogSetText(MfsChangelog entry, const char *text);
 
 // Dependencies
 
+MfsDeps mfsDepsNew(void);
 void mfsDepsFree(MfsDeps deps);
 MfsDeps mfsDepsCopy(MfsDeps deps);
 int mfsDepsCount(MfsDeps deps);
