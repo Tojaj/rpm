@@ -1989,6 +1989,8 @@ rpmRC mfsPackageSetDeps(MfsPackage pkg, MfsDeps deps, MfsDepType deptype)
 
     // Set the new dependencies
     for (MfsDep e = deps->entries; e; e = e->next) {
+	char *flags_str;
+
 	if (!e->name) {
 	    mfslog_err(_("invalid dependency - Missing name\n"));
 	    rc = RPMRC_FAIL;
@@ -2014,7 +2016,10 @@ rpmRC mfsPackageSetDeps(MfsPackage pkg, MfsDeps deps, MfsDepType deptype)
 			e->name);
 	}
 
-	mfslog_info(" - %s %s %d\n", e->name, e->version ? e->version : "", e->flags);
+	flags_str = mfsDepGetFlagsStr(e);
+	mfslog_info(" - %s %s %d (%s)\n", e->name, e->version ? e->version : "",
+		    e->flags, flags_str);
+	free(flags_str);
 
 	ret = addReqProv(pkg->pkg,
 			 nametag, e->name,
@@ -2793,24 +2798,66 @@ uint32_t mfsDepGetIndex(MfsDep entry)
 char *mfsDepGetFlagsStr(MfsDep entry)
 {
     assert(entry);
-    char *flags_str = NULL;
+    char *str = NULL;
     rpmsenseFlags flags = entry->flags;
+    ARGV_t array = argvNew();
 
     // Comparison
     if (flags & RPMSENSE_LESS && flags & RPMSENSE_EQUAL)
-	flags_str = mstrdup("=<");
+	argvAdd(&array, "=<");
     else if (flags & RPMSENSE_GREATER && flags & RPMSENSE_EQUAL)
-	flags_str = mstrdup("=>");
+	argvAdd(&array, "=>");
     else if (flags & RPMSENSE_LESS)
-	flags_str = mstrdup("<");
+	argvAdd(&array, "<");
     else if (flags & RPMSENSE_GREATER)
-	flags_str = mstrdup(">");
+	argvAdd(&array, ">");
     else if (flags & RPMSENSE_EQUAL)
-	flags_str = mstrdup("==");
+	argvAdd(&array, "==");
 
-    // TODO: Other flags
+    // Other flags
+    if (flags & RPMSENSE_POSTTRANS)
+	argvAdd(&array, "%posttrans");
+    if (flags & RPMSENSE_PREREQ)
+	argvAdd(&array, "legacy_prereq");
+    if (flags & RPMSENSE_PRETRANS)
+	argvAdd(&array, "pretrans");
+    if (flags & RPMSENSE_INTERP)
+	argvAdd(&array, "interpreter");
+    if (flags & RPMSENSE_SCRIPT_PRE)
+	argvAdd(&array, "%pre");
+    if (flags & RPMSENSE_SCRIPT_POST)
+	argvAdd(&array, "%post");
+    if (flags & RPMSENSE_SCRIPT_PREUN)
+	argvAdd(&array, "%preun");
+    if (flags & RPMSENSE_SCRIPT_POSTUN)
+	argvAdd(&array, "%postun");
+    if (flags & RPMSENSE_SCRIPT_VERIFY)
+	argvAdd(&array, "%verify");
+    if (flags & RPMSENSE_FIND_REQUIRES)
+	argvAdd(&array, "find-requires_generated");
+    if (flags & RPMSENSE_FIND_PROVIDES)
+	argvAdd(&array, "find-provides_generated");
+    if (flags & RPMSENSE_TRIGGERIN)
+	argvAdd(&array, "%triggerin");
+    if (flags & RPMSENSE_TRIGGERUN)
+	argvAdd(&array, "%triggerun");
+    if (flags & RPMSENSE_TRIGGERPOSTUN)
+	argvAdd(&array, "%triggerpostun");
+    if (flags & RPMSENSE_MISSINGOK)
+	argvAdd(&array, "missingok");
+    if (flags & RPMSENSE_RPMLIB)
+	argvAdd(&array, "rpmlib(feature)");
+    if (flags & RPMSENSE_TRIGGERPREIN)
+	argvAdd(&array, "%triggerprein");
+    if (flags & RPMSENSE_KEYRING)
+	argvAdd(&array, "keyring");
+    if (flags & RPMSENSE_CONFIG)
+	argvAdd(&array, "config");
 
-    return flags_str;
+    str = argvJoin(array, ",");
+    argvFree(array);
+
+    return str ? str : mstrdup("");
 }
 
 
