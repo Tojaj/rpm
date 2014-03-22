@@ -1122,6 +1122,9 @@ void addFileListRecord(FileList fl, FileListRec flr)
 	}
     }
 
+    if (flp->caps)
+	fl->haveCaps = 1;
+
     fl->files.used++;
 }
 
