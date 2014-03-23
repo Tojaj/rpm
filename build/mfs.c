@@ -2074,6 +2074,23 @@ rpmRC mfsPackageSetFileFiles(MfsPackage pkg, MfsFileFiles ffiles)
     return RPMRC_OK;
 }
 
+MfsPolicies mfsPackageGetPolicies(MfsPackage pkg)
+{
+    MfsPolicies policies = xcalloc(1, sizeof(*policies));
+    policies->policies = argvCopy(pkg->pkg->policyList);
+    return policies;
+}
+
+rpmRC mfsPackageSetPolicies(MfsPackage pkg, MfsPolicies policies)
+{
+    argvFree(pkg->pkg->policyList);
+    mfslog_info("Setting new policies to %s\n", pkg->fullname);
+    for (int x=0; policies->policies && policies->policies[x]; x++)
+	mfslog_info(" - %s\n", policies->policies[x]);
+    pkg->pkg->policyList = argvCopy(policies->policies);
+    return RPMRC_OK;
+}
+
 MfsFiles mfsPackageGetFiles(MfsPackage mfspkg)
 {
     Package pkg = mfspkg->pkg; // Shortcut
