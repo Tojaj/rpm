@@ -239,6 +239,7 @@ MfsPackage mfsPackageNew(MfsContext context,
  */
 rpmRC mfsPackageFinalize(MfsPackage mfspkg);
 Header mfsPackageGetHeader(MfsPackage pkg);
+const char *mfsPackageName(MfsPackage pkg);
 const rpmTagVal * mfsPackageTags(void);
 
 /* Set the preamble tag value to the package.

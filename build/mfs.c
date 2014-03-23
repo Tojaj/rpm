@@ -1240,6 +1240,12 @@ Header mfsPackageGetHeader(MfsPackage pkg)
     return pkg->pkg->header;
 }
 
+const char *mfsPackageName(MfsPackage pkg)
+{
+    if (!pkg) return NULL;
+    return pkg->fullname;
+}
+
 const rpmTagVal * mfsPackageTags(void) {
 #define PREAMBLELIST_SIZE   (sizeof(preambleList) / sizeof(preambleList[0]))
     static rpmTagVal array[PREAMBLELIST_SIZE];
