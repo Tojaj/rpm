@@ -12,7 +12,7 @@ extern "C" {
 struct rpmcf_s {
     ARGV_t fattrs;	/*!< file attribute tokens */
     rpm_color_t fcolor;	/*!< file color */
-    const char *ftype;	/*!< file type (class) */
+    char *ftype;	/*!< file type (class) */
 };
 
 typedef struct rpmcf_s * rpmcf;	    /*!< classified file */

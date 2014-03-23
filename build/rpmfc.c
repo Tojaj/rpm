@@ -1471,7 +1471,7 @@ rpmcf rpmfcClassifyFile(rpmfc fc, const char *fn, rpm_mode_t mode)
 	/* Add file class */
 	if (fcolor == RPMFC_WHITE || !(fcolor & RPMFC_INCLUDE))
 	    ftype = "";
-	cf->ftype = ftype;
+	cf->ftype = strdup(ftype ? ftype : "");
     }
 
 exit:
@@ -1497,6 +1497,7 @@ rpmcf rpmcfFree(rpmcf cf)
 {
     if (cf) {
 	argvFree(cf->fattrs);
+	free(cf->ftype);
         free(cf);
     }
     return NULL;
