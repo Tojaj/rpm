@@ -41,6 +41,7 @@ typedef struct MfsDep_s * MfsDep;
 typedef struct MfsFileLines_s * MfsFileLines;
 typedef struct MfsFileFiles_s * MfsFileFiles;
 typedef struct MfsPolicies_s * MfsPolicies;
+typedef struct MfsFiles_s * MfsFiles;
 typedef struct MfsFile_s * MfsFile;
 
 /* Module init function's name has to follow the pattern: "init_modulename"
@@ -296,6 +297,8 @@ rpmRC mfsPackageSetFileFiles(MfsPackage pkg, MfsFileFiles filelfiles);
 MfsPolicies mfsPackageGetPolicies(MfsPackage pkg);
 rpmRC mfsPackageSetPolicies(MfsPackage pkg, MfsPolicies policies);
 
+MfsFiles mfsPackageGetFiles(MfsPackage pkg);
+
 // Scripts
 
 MfsScript mfsScriptNew(void);
@@ -399,7 +402,11 @@ rpmRC mfsPoliciesAppend(MfsPolicies policies, const char *flist);
 rpmRC mfsPoliciesDelete(MfsPolicies policies, int index);
 ARGV_t mfsPoliciesGetAll(MfsPolicies policies);
 
-// File Hook Related API
+// Processed files
+
+void mfsFilesFree(MfsFiles files);
+int mfsFilesCount(MfsFiles files);
+const MfsFile mfsFilesGetEntry(MfsFiles files, int index);
 
 const char * mfsFileGetPath(MfsFile file);
 rpmRC mfsPackageAddFile(MfsPackage pkg, MfsFile file);

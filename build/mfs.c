@@ -2074,6 +2074,53 @@ rpmRC mfsPackageSetFileFiles(MfsPackage pkg, MfsFileFiles ffiles)
     return RPMRC_OK;
 }
 
+MfsFiles mfsPackageGetFiles(MfsPackage mfspkg)
+{
+    Package pkg = mfspkg->pkg; // Shortcut
+    MfsFiles files = xcalloc(1, sizeof(*files));
+    MfsFile *last = &files->files;
+    rpmfc fc = rpmfcCreate(mfspkg->spec->buildRoot, 0);
+
+    if (!pkg->fl)
+	return files;
+
+    files->pkg = pkg;
+
+    // Transform pkg->fl to list of MfsFile objects
+    for (int x=0; x < pkg->fl->files.used; x++) {
+	MfsFile mfsfile;
+	FileListRec copy;
+	FileListRec e = &pkg->fl->files.recs[x];
+
+	// XXX: e->uname and e->gname in pkg are just ids
+	// to string pool. Convert them to strings for the copying
+	rpmsid uname = e->uname;
+	rpmsid gname = e->gname;
+	e->uname = rpmstrPoolStr(pkg->fl->pool, e->uname);
+	e->gname = rpmstrPoolStr(pkg->fl->pool, e->gname);
+	// XXX: End
+	copy = mfsDupFileListRec(e);
+	// XXX: Restore ids
+	e->uname = uname;
+	e->gname = gname;
+	// XXX: End
+
+	mfsfile = xcalloc(1, sizeof(*mfsfile));
+	mfsfile->flr = copy;
+	mfsfile->diskpath = copy->diskPath;
+	mfsfile->spec = mfspkg->spec;
+	mfsfile->include_in_original = 1;
+	mfsfile->classified_file = rpmfcClassifyFile(fc, copy->diskPath, copy->fl_mode);
+
+	// Append the new mfsfile
+	*last = mfsfile;
+	last = &mfsfile->next;
+    }
+
+    rpmfcFree(fc);
+
+    return files;
+}
 
 // Scripts
 
@@ -3023,8 +3070,51 @@ ARGV_t mfsPoliciesGetAll(MfsPolicies policies)
 }
 
 /*
- * Package hook related functions
+ * Processed files related functions
  */
+
+void mfsFilesFree(MfsFiles files)
+{
+    if (!files)
+	return;
+    for (MfsFile f = files->files; f;) {
+	MfsFile next = f->next;
+	mfsFreeDuppedFileListRec(f->flr);
+	rpmcfFree(f->classified_file);
+	free(f);
+	f = next;
+    }
+    free(files);
+}
+
+int mfsFilesCount(MfsFiles files)
+{
+    assert(files);
+    int x = 0;
+    MfsFile entry = files->files;
+    while (entry) {
+	entry = entry->next;
+	x++;
+    }
+    return x;
+}
+
+const MfsFile mfsFilesGetEntry(MfsFiles files, int index)
+{
+    assert(files);
+    int x = 0;
+    MfsFile entry = files->files;
+    while (entry) {
+	if (x == index)
+	    break;
+	if (index == -1 && !entry->next)
+	    break;
+	entry = entry->next;
+	x++;
+    }
+
+    return entry;
+}
 
 const char * mfsFileGetPath(MfsFile file)
 {

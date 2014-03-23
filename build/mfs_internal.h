@@ -187,6 +187,12 @@ struct MfsFile_s {
     Package originalpkg;	/*!< Original destination package */
     rpmSpec spec;		/*!< Current spec */
     MfsFilePackageList pkglist; /*!< List of packages that include the file */
+    struct MfsFile_s *next;	/*!< Used when stored in MfsFile_s */
+};
+
+struct MfsFiles_s {
+    Package pkg;
+    struct MfsFile_s *files;
 };
 
 typedef const struct MfsDepMapRec_s {
