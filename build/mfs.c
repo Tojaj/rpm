@@ -46,6 +46,7 @@ static const char *enumHookPointValToStr(MfsHookPoint point)
     case MFS_HOOK_POINT_POSTBUILD:  return "postbuild";
     case MFS_HOOK_POINT_POSTINTALL: return "postinstall";
     case MFS_HOOK_POINT_POSTCHECK:  return "postcheck";
+    case MFS_HOOK_POINT_POSTFILEPROCESSING: return "postfileprocessing";
     case MFS_HOOK_POINT_FINAL:      return "postfinal";
     default: break;
     }
@@ -609,6 +610,7 @@ static FileListRec mfsDupFileListRec(FileListRec rec)
     copy->diskPath = mstrdup(rec->diskPath);
     copy->cpioPath = mstrdup(rec->cpioPath);
     // XXX: Tricky, but FileListRec has really got strings in these variables
+    // during processing by addFile() function from build/files.c
     copy->uname = mstrdup((const char *) rec->uname);
     copy->gname = mstrdup((const char *) rec->gname);
     // XXX: End of tricky part

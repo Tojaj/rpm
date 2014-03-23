@@ -55,13 +55,15 @@ typedef rpmRC (*MfsBuildHookFunc)(MfsContext context);
 typedef rpmRC (*MfsFileHookFunc)(MfsContext context, MfsFile file);
 
 typedef enum MfsHookPoint_e {
-    MFS_HOOK_POINT_POSTPARSE,
-    MFS_HOOK_POINT_POSTPREP,
-    MFS_HOOK_POINT_POSTBUILD,
-    MFS_HOOK_POINT_POSTINTALL,
-    MFS_HOOK_POINT_POSTCHECK,
-    MFS_HOOK_POINT_FINAL,
-    MFS_HOOK_POINT_SENTINEL /*!< The last element of the list */
+    MFS_HOOK_POINT_POSTPARSE,	/*!< Called after spec is parsed/before build starts */
+    MFS_HOOK_POINT_POSTPREP,	/*!< Called after %prep script */
+    MFS_HOOK_POINT_POSTBUILD,	/*!< Called after %build script */
+    MFS_HOOK_POINT_POSTINTALL,	/*!< Called after %install script */
+    MFS_HOOK_POINT_POSTCHECK,	/*!< Called after %check script. */
+    MFS_HOOK_POINT_POSTFILEPROCESSING,	/*!< All files were processed and
+	prepared, but not yet put in the headers. */
+    MFS_HOOK_POINT_FINAL,	/*!< Called at the end. */
+    MFS_HOOK_POINT_SENTINEL	/*!< The last element of the list */
 } MfsHookPoint;
 
 typedef enum MfsSpecAttr_e {

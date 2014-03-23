@@ -1999,6 +1999,10 @@ rpmRC processBinaryFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
 	    goto exit;
     }
 
+    if ((rc = mfsManagerCallBuildHooks(spec->mfs_module_manager, spec,
+			    MFS_HOOK_POINT_POSTFILEPROCESSING)) != RPMRC_OK)
+	goto exit;
+
     /* Gen CPIO list and Headers, gen dependencies, etc. */
     for (pkg = spec->packages; pkg != NULL; pkg = pkg->next) {
 	char *nvr;
