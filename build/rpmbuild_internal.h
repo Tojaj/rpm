@@ -361,10 +361,14 @@ rpmRC processBinaryFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
  * Generate package dependencies.
  * @param spec		spec file control
  * @param pkg		package control
+ * @param av            zero terminated list of full filenames
+ * @param fmode         list of file modes
+ * @param fflag         list of file flags
  * @return		RPMRC_OK on success
  */
 RPM_GNUC_INTERNAL
-rpmRC rpmfcGenerateDepends(const rpmSpec spec, Package pkg);
+rpmRC rpmfcGenerateDepends(const rpmSpec spec, Package pkg,
+                           ARGV_t av, rpm_mode_t *fmode, rpmFlags *fflag);
 
 /** \ingroup rpmfc
  * Return helper output.

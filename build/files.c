@@ -2024,9 +2024,6 @@ rpmRC processBinaryFiles(rpmSpec spec, rpmBuildPkgFlags pkgFlags,
 	free(pkg->fl);
 	pkg->fl = NULL;
 
-	if ((rc = rpmfcGenerateDepends(spec, pkg)) != RPMRC_OK)
-	    goto exit;
-
 	/* Check arch vs file colors */
 	a = headerGetString(pkg->header, RPMTAG_ARCH);
 	header_color = headerGetNumber(pkg->header, RPMTAG_HEADERCOLOR);

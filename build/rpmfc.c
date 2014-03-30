@@ -1164,17 +1164,14 @@ static void printDeps(rpmstrPool pool, Header h)
     rpmdsFree(ds);
 }
 
-static rpmRC rpmfcGenerateDependsHelper(const rpmSpec spec, Package pkg, rpmfi fi)
+static rpmRC rpmfcGenerateDependsHelper(const rpmSpec spec, Package pkg, ARGV_t av)
 {
     StringBuf sb_stdin = newStringBuf();
     rpmRC rc = RPMRC_OK;
 
     /* Create file manifest buffer to deliver to dependency finder. */
-    fi = rpmfiInit(fi, 0);
-    while (rpmfiNext(fi) >= 0) {
-	appendStringBuf(sb_stdin, spec->buildRoot);
-	appendLineStringBuf(sb_stdin, rpmfiFN(fi));
-    }
+    for (int x=0; av && av[x]; x++)
+	appendLineStringBuf(sb_stdin, av[x]);
 
     for (DepMsg_t dm = DepMsgs; dm->msg != NULL; dm++) {
 	rpmTagVal tag = (dm->ftag > 0) ? dm->ftag : dm->ntag;
@@ -1228,16 +1225,13 @@ static rpmRC rpmfcGenerateDependsHelper(const rpmSpec spec, Package pkg, rpmfi f
     return rc;
 }
 
-rpmRC rpmfcGenerateDepends(const rpmSpec spec, Package pkg)
+rpmRC rpmfcGenerateDepends(const rpmSpec spec, Package pkg, ARGV_t av,
+                           rpm_mode_t *fmode, rpmFlags *fflag)
 {
-    rpmfi fi = rpmfilesIter(pkg->cpioList, RPMFI_ITER_FWD);
     rpmfc fc = NULL;
-    ARGV_t av = NULL;
-    rpm_mode_t * fmode = NULL;
-    int ac = rpmfiFC(fi);
+    int ac = argvCount(av);
     int genConfigDeps = 0;
     rpmRC rc = RPMRC_OK;
-    int idx;
     struct rpmtd_s td;
 
     /* Skip packages with no files. */
@@ -1251,23 +1245,14 @@ rpmRC rpmfcGenerateDepends(const rpmSpec spec, Package pkg)
     /* If new-fangled dependency generation is disabled ... */
     if (!rpmExpandNumeric("%{?_use_internal_dependency_generator}")) {
 	/* ... then generate dependencies using %{__find_requires} et al. */
-	rc = rpmfcGenerateDependsHelper(spec, pkg, fi);
+	rc = rpmfcGenerateDependsHelper(spec, pkg, av);
 	goto exit;
     }
 
-    /* Extract absolute file paths in argv format. */
-    av = xcalloc(ac+1, sizeof(*av));
-    fmode = xcalloc(ac+1, sizeof(*fmode));
-
-    fi = rpmfiInit(fi, 0);
-    while ((idx = rpmfiNext(fi)) >= 0) {
+    for (int x=0; x < ac; x++) {
 	/* Does package have any %config files? */
-	genConfigDeps |= (rpmfiFFlags(fi) & RPMFILE_CONFIG);
-
-	av[idx] = rstrscat(NULL, spec->buildRoot, rpmfiFN(fi), NULL);
-	fmode[idx] = rpmfiFMode(fi);
+        genConfigDeps |= (fflag[x] & RPMFILE_CONFIG);
     }
-    av[ac] = NULL;
 
     fc = rpmfcCreate(spec->buildRoot, 0);
     fc->skipProv = !pkg->autoProv;
@@ -1384,10 +1369,7 @@ exit:
     printDeps(fc ? fc->pool : NULL, pkg->header);
 
     /* Clean up. */
-    free(fmode);
     rpmfcFree(fc);
-    argvFree(av);
-    rpmfiFree(fi);
 
     return rc;
 }
