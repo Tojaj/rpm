@@ -22,6 +22,7 @@
 
 #define MODULES_ENABLED "%{?_rpmbuild_modules_enabled}"
 #define MODULES_BLACKLIST "%{?_rpmbuild_modules_blacklist_regex}"
+#define MODULES_DIRECTORY "%{?_rpmbuild_modules_directory}"
 
 #define TIME_STR_BUF	50
 #define STATICSTRLEN(s) (sizeof(s)/sizeof(s[0]))
@@ -536,6 +537,21 @@ exit:
 	free(pattern);
 
     return rc;
+}
+
+char *mfsModulesDirectory(void)
+{
+    char *moduledir;
+
+    moduledir = rpmExpand(MODULES_DIRECTORY, NULL);
+    if (moduledir && *moduledir != '\0' && *moduledir == '/')
+	return moduledir;
+
+    free(moduledir);
+
+    rasprintf(&moduledir, "%s/%s", rpmConfigDir(), MFSMODULESDIR);
+    moduledir = rpmCleanPath(moduledir);
+    return moduledir;
 }
 
 rpmRC mfsLoadModules(void **modules, const char *path, MfsManager mfsm)

@@ -329,10 +329,8 @@ rpmRC rpmSpecBuild(rpmSpec spec, BTA_t buildArgs)
     rpmRC rc = RPMRC_OK;
     void *modules = NULL;
     MfsManager mm = NULL;
-    char *moduledir;
+    char *moduledir = mfsModulesDirectory();
 
-    rasprintf(&moduledir, "%s/%s", rpmConfigDir(), MFSMODULESDIR);
-    moduledir = rpmCleanPath(moduledir);
     mm = mfsManagerNew(spec);
     rc = mfsLoadModules(&modules, moduledir, mm);
     free(moduledir);

@@ -329,6 +329,8 @@ void mfsManagerFree(MfsManager mm);
 MfsContext mfsContextNew(void);
 void mfsContextFree(MfsContext context);
 
+char *mfsModulesDirectory(void);
+
 rpmRC mfsLoadModules(void **modules, const char *path, MfsManager msfm);
 void mfsUnloadModules(void *modules);
 
