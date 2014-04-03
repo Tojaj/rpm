@@ -204,22 +204,12 @@ exit:
     return rc;
 }
 
-static rpmRC buildSpec(BTA_t buildArgs, rpmSpec spec, int what)
+static rpmRC buildSpec(BTA_t buildArgs, rpmSpec spec, int what, MfsManager mm)
 {
     rpmRC rc = RPMRC_OK;
     int test = (what & RPMBUILD_NOBUILD);
     char *cookie = buildArgs->cookie ? xstrdup(buildArgs->cookie) : NULL;
-    void *modules = NULL;
-    MfsManager mm = NULL;
 
-    char *moduledir;
-    rasprintf(&moduledir, "%s/%s", rpmConfigDir(), MFSMODULESDIR);
-    moduledir = rpmCleanPath(moduledir);
-    mm = mfsManagerNew(spec);
-    rc = mfsLoadModules(&modules, moduledir, mm);
-    free(moduledir);
-    if (rc)
-	goto exit;
     spec->mfs_module_manager = mm;
 
     /* XXX TODO: rootDir is only relevant during build, eliminate from spec */
@@ -232,7 +222,8 @@ static rpmRC buildSpec(BTA_t buildArgs, rpmSpec spec, int what)
 	for (x = 0; x < spec->BACount; x++) {
 	    if ((rc = buildSpec(buildArgs, spec->BASpecs[x],
 				(what & ~RPMBUILD_RMSOURCE) |
-				(x ? 0 : (what & RPMBUILD_PACKAGESOURCE))))) {
+				(x ? 0 : (what & RPMBUILD_PACKAGESOURCE)),
+				mm))) {
 		goto exit;
 	    }
 	}
@@ -322,8 +313,6 @@ exit:
     if ((rc = mfsManagerCallBuildHooks(mm, spec, MFS_HOOK_POINT_FINAL)) != RPMRC_OK)
 	goto exit;
 
-    mfsManagerFree(mm);
-    mfsUnloadModules(modules);
     free(cookie);
     spec->rootDir = NULL;
     if (rc != RPMRC_OK && rpmlogGetNrecs() > 0) {
@@ -337,6 +326,25 @@ exit:
 
 rpmRC rpmSpecBuild(rpmSpec spec, BTA_t buildArgs)
 {
+    rpmRC rc = RPMRC_OK;
+    void *modules = NULL;
+    MfsManager mm = NULL;
+    char *moduledir;
+
+    rasprintf(&moduledir, "%s/%s", rpmConfigDir(), MFSMODULESDIR);
+    moduledir = rpmCleanPath(moduledir);
+    mm = mfsManagerNew(spec);
+    rc = mfsLoadModules(&modules, moduledir, mm);
+    free(moduledir);
+    if (rc)
+	goto exit;
+
     /* buildSpec() can recurse with different buildAmount, pass it separately */
-    return buildSpec(buildArgs, spec, buildArgs->buildAmount);
+    rc = buildSpec(buildArgs, spec, buildArgs->buildAmount, mm);
+
+exit:
+    mfsManagerFree(mm);
+    mfsUnloadModules(modules);
+
+    return rc;
 }
