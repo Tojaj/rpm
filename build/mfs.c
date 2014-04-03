@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <fnmatch.h>
 #include <ctype.h>
+#include <regex.h>
 
 #include <rpm/header.h>
 #include <rpm/rpmlog.h>
@@ -18,6 +19,9 @@
 #include "rpmio/rpmlua.h"
 
 #include "debug.h"
+
+#define MODULES_ENABLED "%{?_rpmbuild_modules_enabled}"
+#define MODULES_BLACKLIST "%{?_rpmbuild_modules_blacklist_regex}"
 
 #define TIME_STR_BUF	50
 #define STATICSTRLEN(s) (sizeof(s)/sizeof(s[0]))
@@ -487,18 +491,80 @@ static void *loadModule(const char *name, const char *fullpath,
     return handle;
 }
 
+static char *getRegerror (int errcode, regex_t *compiled)
+{
+    size_t length = regerror(errcode, compiled, NULL, 0);
+    char *buffer = xmalloc(length);
+    (void) regerror(errcode, compiled, buffer, length);
+    return buffer;
+}
+
+static rpmRC mfsCompileRegEx(regex_t *reg, const char *in_pattern,
+			     int expand, int *initialized)
+{
+    int rc = RPMRC_OK;
+    int reg_rc;
+    char *pattern;
+
+    if (initialized)
+        *initialized = 0;
+
+    if (!in_pattern)
+	goto exit;
+
+    if (expand)
+	pattern = rpmExpand(in_pattern, NULL);
+    else
+	pattern = mstrdup(in_pattern);
+
+    if (!pattern || *pattern == '\0')
+	goto exit;
+
+    if ((reg_rc = regcomp(reg, pattern, REG_EXTENDED)) != 0) {
+	char *errmsg = getRegerror(reg_rc, NULL);
+	mfslog_warning(_("Cannot compile regex \"%s\": %s\n"), pattern, errmsg);
+	free(errmsg);
+	rc = RPMRC_FAIL;
+	goto exit;
+    }
+
+    if (initialized)
+	*initialized = 1;
+
+exit:
+    if (pattern)
+	free(pattern);
+
+    return rc;
+}
+
 rpmRC mfsLoadModules(void **modules, const char *path, MfsManager mfsm)
 {
     MfsModuleLoadState load_state;
     struct dirent* direntry;
     int error_during_loading = 0;
+    regex_t blacklist;
+    int blacklist_initialized;
 
     *modules = NULL;
+
+    // Check if modules are enabled
+    if (rpmExpandNumeric(MODULES_ENABLED) == 0) {
+	mfslog_info(_("Modular system is disabled\n"));
+	return RPMRC_OK;
+    }
 
     DIR *dir = opendir(path);
     if (!dir) {
 	mfslog_err(_("Could not open directory %s: %m\n"), path);
         return RPMRC_FAIL;
+    }
+
+    // Prepare blacklisting regexs
+    if (mfsCompileRegEx(&blacklist, MODULES_BLACKLIST,
+			1, &blacklist_initialized) != RPMRC_OK) {
+	mfslog_warning(_("Could not compile regex from \"%s\"\n"),
+			MODULES_BLACKLIST);
     }
 
     load_state = xcalloc(1, sizeof(*load_state));
@@ -509,6 +575,13 @@ rpmRC mfsLoadModules(void **modules, const char *path, MfsManager mfsm)
 	name = getModuleName(direntry->d_name);
         if (!name)
             continue;
+
+	// Check if module is not blacklisted
+	if (blacklist_initialized && regexec(&blacklist, name, 0, NULL, 0) == 0) {
+	    mfslog_info(_("Module \"%s\" is blacklisted\n"), name);
+	    free(name);
+	    continue;
+	}
 
 	rasprintf(&fullpath, "%s/%s", path, direntry->d_name);
 
@@ -531,6 +604,9 @@ rpmRC mfsLoadModules(void **modules, const char *path, MfsManager mfsm)
     }
 
     closedir(dir);
+
+    if (blacklist_initialized)
+	regfree(&blacklist);
 
     if (error_during_loading) {
         mfsUnloadModules(load_state);
