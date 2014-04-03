@@ -449,6 +449,11 @@ rpmRC mfsChangelogSetDateStr(MfsChangelog entry, const char *date);
 char *mfsDepGetFlagsStr(MfsDep entry);
 char *mfsSpecGetArch(MfsSpec spec);
 
+// Experimental function
+
+rpmRC mfsPackageGenerateDepends(MfsPackage pkg, ARGV_t files,
+                                rpm_mode_t *fmodes, rpmFlags *fflags);
+
 #ifdef __cplusplus
 }
 #endif

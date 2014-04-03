@@ -3450,3 +3450,12 @@ rpmRC mfsPackageFinalize(MfsPackage mfspkg)
 errxit:
     return RPMRC_FAIL;
 }
+
+// Experimental API
+
+rpmRC mfsPackageGenerateDepends(MfsPackage pkg, ARGV_t files,
+                                rpm_mode_t *fmodes, rpmFlags *fflags)
+{
+    assert(pkg);
+    return rpmfcGenerateDepends(pkg->spec, pkg->pkg, files, fmodes, fflags);
+}
