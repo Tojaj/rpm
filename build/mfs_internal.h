@@ -53,6 +53,8 @@ struct MfsModuleContext_s {
     MfsBuildHook buildhooks;
     MfsFileHook filehooks;
 
+    MfsModuleCleanupFunc cleanupfunc;
+
     struct MfsModuleContext_s *next;
 };
 

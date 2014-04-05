@@ -52,6 +52,8 @@ typedef struct MfsFile_s * MfsFile;
  */
 typedef rpmRC (*MfsModuleInitFunc)(MfsManager mm);
 
+typedef void (*MfsModuleCleanupFunc)(MfsManager mm);
+
 typedef rpmRC (*MfsBuildHookFunc)(MfsContext context);
 typedef rpmRC (*MfsFileHookFunc)(MfsContext context, MfsFile file);
 
@@ -166,6 +168,10 @@ rpmRC mfsFileHookSetPriority(MfsFileHook hook, int32_t priority);
 rpmRC mfsFileHookSetPrettyName(MfsFileHook hook, const char *name);
 void mfsFileHookAddGlob(MfsFileHook hook, const char *glob);
 void mfsManagerRegisterFileHook(MfsManager mm, MfsFileHook hook);
+
+rpmRC mfsManagerSetCleanupFunc(MfsManager mm, MfsModuleCleanupFunc func);
+
+void *mfsManagerGetGlobalData(MfsManager mm);
 
 /* Set data that can be accessed by mfsGetModuleGlobalData()
  */

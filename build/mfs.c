@@ -212,6 +212,15 @@ void mfsManagerFree(MfsManager mm)
         return;
 
     for (MfsModuleContext mc=mm->modulecontexts; mc;) {
+        MfsModuleContext next = mc->next;
+        mm->cur_context = mc;
+        if (mc->cleanupfunc)
+            mc->cleanupfunc(mm);
+        mc = next;
+    }
+    mm->cur_context = NULL;
+
+    for (MfsModuleContext mc=mm->modulecontexts; mc;) {
 	MfsModuleContext next = mc->next;
 	mfsModuleContextFree(mc);
 	mc = next;
@@ -910,6 +919,20 @@ void mfsManagerRegisterFileHook(MfsManager mm, MfsFileHook hook)
     hook->modulecontext = modulecontext;
     hook->next = modulecontext->filehooks;
     modulecontext->filehooks = hook;
+}
+
+rpmRC mfsManagerSetCleanupFunc(MfsManager mm, MfsModuleCleanupFunc func)
+{
+    assert(mm);
+    mm->cur_context->cleanupfunc = func;
+    return RPMRC_OK;
+}
+
+void *mfsManagerGetGlobalData(MfsManager mm)
+{
+    assert(mm);
+    MfsModuleContext modulecontext = mm->cur_context;
+    return modulecontext->globaldata;
 }
 
 void mfsManagerSetGlobalData(MfsManager mm, void *data)
