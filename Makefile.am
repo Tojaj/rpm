@@ -89,6 +89,7 @@ pkginclude_HEADERS += sign/rpmsign.h
 pkginclude_HEADERS += build/rpmbuild.h
 pkginclude_HEADERS += build/rpmfc.h
 pkginclude_HEADERS += build/rpmspec.h
+pkginclude_HEADERS += build/mfs.h
 
 
 rpmbindir = `echo $(bindir) | $(SED) -e s,usr/bin,bin,`

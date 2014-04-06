@@ -146,3 +146,7 @@ include/rpm/rpmspec.h: build/rpmspec.h include/rpm/$(dirstamp)
 	$(INSTALL_DATA) $(top_srcdir)/build/rpmspec.h include/rpm/rpmspec.h
 BUILT_SOURCES += include/rpm/rpmspec.h
 CLEANFILES += include/rpm/rpmspec.h
+include/rpm/mfs.h: build/mfs.h include/rpm/$(dirstamp)
+	$(INSTALL_DATA) $(top_srcdir)/build/mfs.h include/rpm/mfs.h
+BUILT_SOURCES += include/rpm/mfs.h
+CLEANFILES += include/rpm/mfs.h

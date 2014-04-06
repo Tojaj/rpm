@@ -1395,6 +1395,8 @@ static rpmRC addFile(FileList fl, const char * diskPath,
     flr.specdFlags = fl->cur.specdFlags;
     flr.verifyFlags = fl->cur.verifyFlags;
 
+// XXX Call filehooks here...
+
     addFileListRecord(fl, &flr);
 
     free(flr.langs);

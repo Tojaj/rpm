@@ -15,7 +15,7 @@ librpmbuild_la_SOURCES = \
 	parseSpec.c reqprov.c rpmfc.c spec.c \
 	parsePolicies.c policies.c \
 	rpmbuild_internal.h rpmbuild_misc.h \
-	parsePreamble_internal.h \
+	mfs.c mfs.h mfs_internal.h parsePreamble_internal.h \
 	parseChangelog_internal.h
 
 librpmbuild_la_LDFLAGS = -version-info 4:0:1

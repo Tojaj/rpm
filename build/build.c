@@ -12,6 +12,7 @@
 #include <rpm/rpmfileutil.h>
 #include "build/rpmbuild_internal.h"
 #include "build/rpmbuild_misc.h"
+#include "build/mfs_internal.h"
 #include "lib/rpmug.h"
 
 #include "debug.h"
@@ -208,6 +209,18 @@ static rpmRC buildSpec(BTA_t buildArgs, rpmSpec spec, int what)
     rpmRC rc = RPMRC_OK;
     int test = (what & RPMBUILD_NOBUILD);
     char *cookie = buildArgs->cookie ? xstrdup(buildArgs->cookie) : NULL;
+    void *modules = NULL;
+    MfsManager mm = NULL;
+
+    char *moduledir;
+    rasprintf(&moduledir, "%s/%s", rpmConfigDir(), MFSMODULESDIR);
+    moduledir = rpmCleanPath(moduledir);
+    mm = mfsManagerNew(spec);
+    rc = mfsLoadModules(&modules, moduledir, mm);
+    free(moduledir);
+    if (rc)
+	goto exit;
+    spec->mfs_module_manager = mm;
 
     /* XXX TODO: rootDir is only relevant during build, eliminate from spec */
     spec->rootDir = buildArgs->rootdir;
@@ -225,6 +238,9 @@ static rpmRC buildSpec(BTA_t buildArgs, rpmSpec spec, int what)
 	}
     } else {
 	int didBuild = (what & (RPMBUILD_PREP|RPMBUILD_BUILD|RPMBUILD_INSTALL));
+
+        if ((rc = mfsManagerCallParserHooks(mm, spec)) != RPMRC_OK)
+	    goto exit;
 
 	if ((what & RPMBUILD_PREP) &&
 	    (rc = doScript(spec, RPMBUILD_PREP, "%prep",
@@ -285,6 +301,8 @@ static rpmRC buildSpec(BTA_t buildArgs, rpmSpec spec, int what)
 	(void) unlink(spec->specFile);
 
 exit:
+    mfsManagerFree(mm);
+    mfsUnloadModules(modules);
     free(cookie);
     spec->rootDir = NULL;
     if (rc != RPMRC_OK && rpmlogGetNrecs() > 0) {

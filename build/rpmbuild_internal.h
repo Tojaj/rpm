@@ -81,6 +81,8 @@ struct rpmSpec_s {
     StringBuf parsed;		/*!< parsed spec contents */
 
     Package packages;		/*!< Package list. */
+
+    void *mfs_module_manager;
 };
 
 /** \ingroup rpmbuild
