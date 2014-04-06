@@ -13,6 +13,7 @@
 #include <rpm/rpmurl.h>
 #include <rpm/rpmfileutil.h>
 #include "rpmio/rpmlua.h"
+#include "build/parsePreamble_internal.h"
 #include "build/rpmbuild_internal.h"
 #include "build/rpmbuild_misc.h"
 #include "debug.h"
@@ -23,30 +24,6 @@
 #define SKIPNONWHITE(_x){while(*(_x) &&!(risspace(*_x) || *(_x) == ',')) (_x)++;}
 
 #define WHITELIST_NAME ".-_+%{}"
-
-/**
- */
-static const rpmTagVal copyTagsDuringParse[] = {
-    RPMTAG_EPOCH,
-    RPMTAG_VERSION,
-    RPMTAG_RELEASE,
-    RPMTAG_LICENSE,
-    RPMTAG_PACKAGER,
-    RPMTAG_DISTRIBUTION,
-    RPMTAG_DISTURL,
-    RPMTAG_VENDOR,
-    RPMTAG_ICON,
-    RPMTAG_URL,
-    RPMTAG_VCS,
-    RPMTAG_CHANGELOGTIME,
-    RPMTAG_CHANGELOGNAME,
-    RPMTAG_CHANGELOGTEXT,
-    RPMTAG_PREFIXES,
-    RPMTAG_DISTTAG,
-    RPMTAG_BUGURL,
-    RPMTAG_GROUP,
-    0
-};
 
 /**
  */
@@ -179,13 +156,12 @@ static int parseNoSource(rpmSpec spec, const char * field, rpmTagVal tag)
     return 0;
 }
 
-static int addSource(rpmSpec spec, Package pkg, const char *field, rpmTagVal tag)
+static int addSource(rpmSpec spec, Package pkg, const char *field,
+		     rpmTagVal tag, const char *number)
 {
     struct Source *p;
     int flag = 0;
     const char *name = NULL;
-    char *nump;
-    char *fieldp = NULL;
     char *buf = NULL;
     uint32_t num = 0;
 
@@ -193,16 +169,13 @@ static int addSource(rpmSpec spec, Package pkg, const char *field, rpmTagVal tag
       case RPMTAG_SOURCE:
 	flag = RPMBUILD_ISSOURCE;
 	name = "source";
-	fieldp = spec->line + 6;
 	break;
       case RPMTAG_PATCH:
 	flag = RPMBUILD_ISPATCH;
 	name = "patch";
-	fieldp = spec->line + 5;
 	break;
       case RPMTAG_ICON:
 	flag = RPMBUILD_ISICON;
-	fieldp = NULL;
 	break;
       default:
 	return -1;
@@ -211,32 +184,15 @@ static int addSource(rpmSpec spec, Package pkg, const char *field, rpmTagVal tag
 
     /* Get the number */
     if (tag != RPMTAG_ICON) {
-	/* We already know that a ':' exists, and that there */
-	/* are no spaces before it.                          */
-	/* This also now allows for spaces and tabs between  */
-	/* the number and the ':'                            */
-	char ch;
-	char *fieldp_backup = fieldp;
-
-	while ((*fieldp != ':') && (*fieldp != ' ') && (*fieldp != '\t')) {
-	    fieldp++;
-	}
-	ch = *fieldp;
-	*fieldp = '\0';
-
-	nump = fieldp_backup;
-	SKIPSPACE(nump);
-	if (nump == NULL || *nump == '\0') {
+	if (number == NULL || *number == '\0') {
 	    num = flag == RPMBUILD_ISSOURCE ? 0 : INT_MAX;
 	} else {
-	    if (parseUnsignedNum(fieldp_backup, &num)) {
+	    if (parseUnsignedNum(number, &num)) {
 		rpmlog(RPMLOG_ERR, _("line %d: Bad %s number: %s\n"),
-			 spec->lineNum, name, spec->line);
-		*fieldp = ch;
+			 spec->lineNum, name, number);
 		return RPMRC_FAIL;
 	    }
 	}
-	*fieldp = ch;
     }
 
     /* Check whether tags of the same number haven't already been defined */
@@ -423,7 +379,7 @@ static int isMemberInEntry(Header h, const char *name, rpmTagVal tag)
 
 /**
  */
-static rpmRC checkForValidArchitectures(rpmSpec spec)
+rpmRC checkForValidArchitectures(rpmSpec spec)
 {
     char *arch = rpmExpand("%{_target_cpu}", NULL);
     char *os = rpmExpand("%{_target_os}", NULL);
@@ -458,13 +414,7 @@ exit:
     return rc;
 }
 
-/**
- * Check that required tags are present in header.
- * @param h		header
- * @param NVR		package name-version-release
- * @return		RPMRC_OK if OK
- */
-static int checkForRequired(Header h, const char * NVR)
+int checkForRequired(Header h, const char * pkgname)
 {
     int res = RPMRC_OK;
     const rpmTagVal * p;
@@ -473,7 +423,7 @@ static int checkForRequired(Header h, const char * NVR)
 	if (!headerIsEntry(h, *p)) {
 	    rpmlog(RPMLOG_ERR,
 			_("%s field must be present in package: %s\n"),
-			rpmTagGetName(*p), NVR);
+			rpmTagGetName(*p), pkgname);
 	    res = RPMRC_FAIL;
 	}
     }
@@ -481,13 +431,7 @@ static int checkForRequired(Header h, const char * NVR)
     return res;
 }
 
-/**
- * Check that no duplicate tags are present in header.
- * @param h		header
- * @param NVR		package name-version-release
- * @return		RPMRC_OK if OK
- */
-static int checkForDuplicates(Header h, const char * NVR)
+int checkForDuplicates(Header h, const char *pkgname)
 {
     int res = RPMRC_OK;
     rpmTagVal tag, lastTag = RPMTAG_NOT_FOUND;
@@ -496,7 +440,7 @@ static int checkForDuplicates(Header h, const char * NVR)
     while ((tag = headerNextTag(hi)) != RPMTAG_NOT_FOUND) {
 	if (tag == lastTag) {
 	    rpmlog(RPMLOG_ERR, _("Duplicate %s entries in package: %s\n"),
-		     rpmTagGetName(tag), NVR);
+		     rpmTagGetName(tag), pkgname);
 	    res = RPMRC_FAIL;
 	}
 	lastTag = tag;
@@ -692,15 +636,18 @@ int addLangTag(rpmSpec spec, Header h, rpmTagVal tag,
     return 0;
 }
 
-static rpmRC applyPreambleTag(rpmSpec spec, Package pkg, rpmTagVal tag,
-                const char *macro, const char *lang, const char *field)
+rpmRC applyPreambleTag(rpmSpec spec, Package pkg, rpmTagVal tag,
+	    const char *macro, const char *lang, const char *field)
 {
+    if (!lang)
+	lang = "";
+
     int multiToken = 0;
     rpmsenseFlags tagflags = RPMSENSE_ANY;
     rpmRC rc = RPMRC_FAIL;
 
     /* See if this is multi-token */
-    char *end = field;
+    const char *end = field;
     SKIPNONSPACE(end);
     if (*end != '\0')
 	multiToken = 1;
@@ -798,12 +745,12 @@ static rpmRC applyPreambleTag(rpmSpec spec, Package pkg, rpmTagVal tag,
     case RPMTAG_SOURCE:
     case RPMTAG_PATCH:
 	macro = NULL;
-	if (addSource(spec, pkg, field, tag))
+	if (addSource(spec, pkg, field, tag, lang))
 	    goto exit;
 	break;
     case RPMTAG_ICON:
 	SINGLE_TOKEN_ONLY;
-	if (addSource(spec, pkg, field, tag) || readIcon(pkg->header, field))
+	if (addSource(spec, pkg, field, tag, NULL) || readIcon(pkg->header, field))
 	    goto exit;
 	break;
     case RPMTAG_NOSOURCE:
@@ -891,6 +838,7 @@ static rpmRC handlePreambleTag(rpmSpec spec, Package pkg, rpmTagVal tag,
 {
     char * field = spec->line;
     char * end;
+    char * num = NULL;
     rpmRC rc = RPMRC_FAIL;
 
     if (field == NULL) /* XXX can't happen */
@@ -915,77 +863,41 @@ static rpmRC handlePreambleTag(rpmSpec spec, Package pkg, rpmTagVal tag,
     end = findLastChar(field);
     *(end+1) = '\0';
 
+    if (tag == RPMTAG_SOURCE || tag == RPMTAG_PATCH) {
+	/* Get the number of the source/patch
+	 * E.g. for "Source1: foo.tgz" get "1"
+	 * And pass this number in the lang param to applyPreambleTag()
+	 */
+	char *num_end;
+
+	if (lang && *lang != '\0') {
+	    rpmlog(RPMLOG_ERR, _("Source or Patch with additional info \"%s\". "
+		   "line %d: %s\n"), lang, spec->lineNum, spec->line);
+	    goto exit;
+	}
+
+	num = spec->line;
+	if (tag == RPMTAG_SOURCE)
+	    num += 6;   // Skip "source"
+	else
+	    num += 5;   // Skip "patch"
+	SKIPSPACE(num);
+	num = num_end = xstrdup(num);
+	while ((*num_end != ':') && (*num_end != ' ') && (*num_end != '\t'))
+	    num_end++;
+	*num_end = '\0';
+
+	lang = num;
+    }
+
     rc = applyPreambleTag(spec, pkg, tag, macro, lang, field);
+
+    if (num)
+        free(num);
 
 exit:
     return rc;
 }
-
-/* This table has to be in a peculiar order.  If one tag is the */
-/* same as another, plus a few letters, it must come first.     */
-
-/**
- */
-typedef const struct PreambleRec_s {
-    rpmTagVal tag;
-    int type;
-    int deprecated;
-    size_t len;
-    const char * token;
-} * PreambleRec;
-
-#define LEN_AND_STR(_tag) (sizeof(_tag)-1), _tag
-
-static struct PreambleRec_s const preambleList[] = {
-    {RPMTAG_NAME,		0, 0, LEN_AND_STR("name")},
-    {RPMTAG_VERSION,		0, 0, LEN_AND_STR("version")},
-    {RPMTAG_RELEASE,		0, 0, LEN_AND_STR("release")},
-    {RPMTAG_EPOCH,		0, 0, LEN_AND_STR("epoch")},
-    {RPMTAG_SUMMARY,		1, 0, LEN_AND_STR("summary")},
-    {RPMTAG_LICENSE,		0, 0, LEN_AND_STR("license")},
-    {RPMTAG_DISTRIBUTION,	0, 0, LEN_AND_STR("distribution")},
-    {RPMTAG_DISTURL,		0, 0, LEN_AND_STR("disturl")},
-    {RPMTAG_VENDOR,		0, 0, LEN_AND_STR("vendor")},
-    {RPMTAG_GROUP,		1, 0, LEN_AND_STR("group")},
-    {RPMTAG_PACKAGER,		0, 0, LEN_AND_STR("packager")},
-    {RPMTAG_URL,		0, 0, LEN_AND_STR("url")},
-    {RPMTAG_VCS,        0, 0, LEN_AND_STR("vcs")},
-    {RPMTAG_SOURCE,		0, 0, LEN_AND_STR("source")},
-    {RPMTAG_PATCH,		0, 0, LEN_AND_STR("patch")},
-    {RPMTAG_NOSOURCE,		0, 0, LEN_AND_STR("nosource")},
-    {RPMTAG_NOPATCH,		0, 0, LEN_AND_STR("nopatch")},
-    {RPMTAG_EXCLUDEARCH,	0, 0, LEN_AND_STR("excludearch")},
-    {RPMTAG_EXCLUSIVEARCH,	0, 0, LEN_AND_STR("exclusivearch")},
-    {RPMTAG_EXCLUDEOS,		0, 0, LEN_AND_STR("excludeos")},
-    {RPMTAG_EXCLUSIVEOS,	0, 0, LEN_AND_STR("exclusiveos")},
-    {RPMTAG_ICON,		0, 0, LEN_AND_STR("icon")},
-    {RPMTAG_PROVIDEFLAGS,	0, 0, LEN_AND_STR("provides")},
-    {RPMTAG_REQUIREFLAGS,	2, 0, LEN_AND_STR("requires")},
-    {RPMTAG_RECOMMENDFLAGS,	0, 0, LEN_AND_STR("recommends")},
-    {RPMTAG_SUGGESTFLAGS,	0, 0, LEN_AND_STR("suggests")},
-    {RPMTAG_SUPPLEMENTFLAGS,	0, 0, LEN_AND_STR("supplements")},
-    {RPMTAG_ENHANCEFLAGS,	0, 0, LEN_AND_STR("enhances")},
-    {RPMTAG_PREREQ,		2, 1, LEN_AND_STR("prereq")},
-    {RPMTAG_CONFLICTFLAGS,	0, 0, LEN_AND_STR("conflicts")},
-    {RPMTAG_OBSOLETEFLAGS,	0, 0, LEN_AND_STR("obsoletes")},
-    {RPMTAG_PREFIXES,		0, 0, LEN_AND_STR("prefixes")},
-    {RPMTAG_PREFIXES,		0, 0, LEN_AND_STR("prefix")},
-    {RPMTAG_BUILDROOT,		0, 0, LEN_AND_STR("buildroot")},
-    {RPMTAG_BUILDARCHS,		0, 0, LEN_AND_STR("buildarchitectures")},
-    {RPMTAG_BUILDARCHS,		0, 0, LEN_AND_STR("buildarch")},
-    {RPMTAG_BUILDCONFLICTS,	0, 0, LEN_AND_STR("buildconflicts")},
-    {RPMTAG_BUILDPREREQ,	0, 1, LEN_AND_STR("buildprereq")},
-    {RPMTAG_BUILDREQUIRES,	0, 0, LEN_AND_STR("buildrequires")},
-    {RPMTAG_AUTOREQPROV,	0, 0, LEN_AND_STR("autoreqprov")},
-    {RPMTAG_AUTOREQ,		0, 0, LEN_AND_STR("autoreq")},
-    {RPMTAG_AUTOPROV,		0, 0, LEN_AND_STR("autoprov")},
-    {RPMTAG_DOCDIR,		0, 0, LEN_AND_STR("docdir")},
-    {RPMTAG_DISTTAG,		0, 0, LEN_AND_STR("disttag")},
-    {RPMTAG_BUGURL,		0, 0, LEN_AND_STR("bugurl")},
-    {RPMTAG_COLLECTIONS,	0, 0, LEN_AND_STR("collections")},
-    {RPMTAG_ORDERFLAGS,		2, 0, LEN_AND_STR("orderwithrequires")},
-    {0, 0, 0, 0}
-};
 
 /**
  */
@@ -1013,10 +925,7 @@ static int findPreambleTag(rpmSpec spec,rpmTagVal * tag,
     switch (p->type) {
     default:
     case 0:
-	/* Unless this is a source or a patch, a ':' better be next */
-	if (p->tag != RPMTAG_SOURCE && p->tag != RPMTAG_PATCH) {
-	    if (*s != ':') return 1;
-	}
+	if (*s != ':') return 1;
 	*lang = '\0';
 	break;
     case 1:	/* Parse optional ( <token> ). */
@@ -1037,6 +946,9 @@ static int findPreambleTag(rpmSpec spec,rpmTagVal * tag,
 	s++;
 	SKIPSPACE(s);
 	if (*s != ':') return 1;
+	break;
+    case 3:
+	*lang = '\0';
 	break;
     }
 
