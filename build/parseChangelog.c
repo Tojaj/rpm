@@ -8,12 +8,13 @@
 #include <rpm/header.h>
 #include <rpm/rpmlog.h>
 #include "build/rpmbuild_internal.h"
+#include "build/parseChangelog_internal.h"
 #include "debug.h"
 
 #define SKIPSPACE(s) { while (*(s) && risspace(*(s))) (s)++; }
 #define SKIPNONSPACE(s) { while (*(s) && !risspace(*(s))) (s)++; }
 
-static void addChangelogEntry(Header h, time_t time, const char *name, const char *text)
+void addChangelogEntry(Header h, time_t time, const char *name, const char *text)
 {
     rpm_time_t mytime = time;	/* XXX convert to header representation */
 				
@@ -30,13 +31,7 @@ static int sameDate(const struct tm *ot, const struct tm *nt)
 	    ot->tm_wday == nt->tm_wday);
 }
 
-/**
- * Parse date string to seconds.
- * @param datestr	date string (e.g. 'Wed Jan 1 1997')
- * @retval secs		secs since the unix epoch
- * @return 		0 on success, -1 on error
- */
-static int dateToTimet(const char * datestr, time_t * secs)
+int rpmDateToTimet(const char * datestr, time_t * secs)
 {
     int rc = -1; /* assume failure */
     struct tm time, ntime;
@@ -165,7 +160,7 @@ static rpmRC addChangelog(Header h, ARGV_const_t sb)
 	    SKIPNONSPACE(s);
 	}
 	SKIPSPACE(date);
-	if (dateToTimet(date, &time)) {
+	if (rpmDateToTimet(date, &time)) {
 	    rpmlog(RPMLOG_ERR, _("bad date in %%changelog: %s\n"), date);
 	    goto exit;
 	}
