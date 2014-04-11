@@ -3179,7 +3179,7 @@ int mfsPoliciesCount(MfsPolicies policies)
     return argvCount(policies->policies);
 }
 
-char *mfsPoliciesGetFn(MfsPolicies policies, int index)
+char *mfsPoliciesGetPolicy(MfsPolicies policies, int index)
 {
     assert(policies);
     if (index >= 0 && index < argvCount(policies->policies))
