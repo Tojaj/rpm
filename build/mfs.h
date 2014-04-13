@@ -879,9 +879,11 @@ rpmRC mfsTriggersDelete(MfsTriggers triggers, int index);
 /** Gets a reference to a trigger from a list
  * @param triggers  List of triggers
  * @param index	    Trigger index
- * @return	    Pointer to a trigger in the list
+ * @return	    Pointer to a trigger in the list.
+ *		    Note: Owner of the trigger is the list,
+ *		    the trigger should not be freed!
  */
-const MfsTrigger mfsTriggersGetEntry(MfsTriggers triggers, int index);
+MfsTrigger mfsTriggersGetEntry(MfsTriggers triggers, int index);
 
 /**@}*/
 
@@ -991,8 +993,10 @@ rpmRC mfsChangelogsDelete(MfsChangelogs changelogs, int index);
  * @param changelogs	List of changelogs
  * @param index		Changelog index
  * @return		Pointer to a changelog in the list
+ *			Note: Owner of the changelog is the list,
+ *			the changelog should not be freed!
  */
-const MfsChangelog mfsChangelogsGetEntry(MfsChangelogs changelogs, int index);
+MfsChangelog mfsChangelogsGetEntry(MfsChangelogs changelogs, int index);
 
 /**@}*/
 
@@ -1117,8 +1121,10 @@ rpmRC mfsDepsDelete(MfsDeps deps, int index);
  * @param deps	    List of dependencies
  * @param index	    Dependency index
  * @return	    Pointer to a dependency in the list
+ *		    Note: Owner of the dependency is the list,
+ *		    the dependency should not be freed!
  */
-const MfsDep mfsDepsGetEntry(MfsDeps deps, int index);
+MfsDep mfsDepsGetEntry(MfsDeps deps, int index);
 
 /**@}*/
 
@@ -1357,8 +1363,10 @@ int mfsFilesCount(MfsFiles files);
  * @param file	    List of processed files
  * @param index	    Index
  * @return	    Pointer to a file in the list
+ *		    Note: Owner of the file is the list,
+ *		    the file should not be freed!
  */
-const MfsFile mfsFilesGetEntry(MfsFiles files, int index);
+MfsFile mfsFilesGetEntry(MfsFiles files, int index);
 
 /**@}*/
 
@@ -1531,7 +1539,7 @@ rpm_color_t mfsFileGetColor(MfsFile file);
  *		    This lists is owned by the file and you shouldn't
  *		    free or modify it!
  */
-const ARGV_t mfsFileGetAttrs(MfsFile file);
+ARGV_const_t mfsFileGetAttrs(MfsFile file);
 
 /** Gets a file type.
  * E.g. "C source, ASCII text", "directory", etc.

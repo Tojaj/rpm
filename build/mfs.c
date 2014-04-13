@@ -2463,7 +2463,7 @@ trigger_entry_delete_error:
 
 }
 
-const MfsTrigger mfsTriggersGetEntry(MfsTriggers triggers, int index)
+MfsTrigger mfsTriggersGetEntry(MfsTriggers triggers, int index)
 {
     assert(triggers);
     int x = 0;
@@ -2667,7 +2667,7 @@ changelog_entry_delete_error:
     return RPMRC_FAIL;
 }
 
-const MfsChangelog mfsChangelogsGetEntry(MfsChangelogs changelogs, int index)
+MfsChangelog mfsChangelogsGetEntry(MfsChangelogs changelogs, int index)
 {
     assert(changelogs);
 
@@ -2911,7 +2911,7 @@ deps_entry_delete_error:
     return RPMRC_FAIL;
 }
 
-const MfsDep mfsDepsGetEntry(MfsDeps deps, int index)
+MfsDep mfsDepsGetEntry(MfsDeps deps, int index)
 {
     assert(deps);
 
@@ -3237,7 +3237,7 @@ int mfsFilesCount(MfsFiles files)
     return x;
 }
 
-const MfsFile mfsFilesGetEntry(MfsFiles files, int index)
+MfsFile mfsFilesGetEntry(MfsFiles files, int index)
 {
     assert(files);
     int x = 0;
@@ -3442,7 +3442,7 @@ rpm_color_t mfsFileGetColor(MfsFile file)
     return rpmcfColor(file->classified_file);
 }
 
-const ARGV_t mfsFileGetAttrs(MfsFile file)
+ARGV_const_t mfsFileGetAttrs(MfsFile file)
 {
     assert(file);
     return rpmcfAttrs(file->classified_file);
