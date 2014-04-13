@@ -157,20 +157,18 @@ static void findLanguages(MfsPackage pkg, ARGV_t *langs)
     // Check files defined in spec file
     for (int x=0; x < mfsFileLinesCount(flines); x++) {
 	ARGV_t linelangs = argvNew();
-	char *line = mfsFileLinesGetLine(flines, x);
+	const char *line = mfsFileLinesGetLine(flines, x);
 	if (parseLineForLangs(line, &linelangs) == RPMRC_OK)
 	    addSaneUniqLangs(langs, linelangs);
-	free(line);
 	argvFree(linelangs);
     }
 
     // Check files defined in filelists
     for (int x=0; x < mfsFileFilesCount(ffiles); x++) {
 	ARGV_t linelangs = argvNew();
-	char *fn = mfsFileFilesGetFn(ffiles, x);
+	const char *fn = mfsFileFilesGetFn(ffiles, x);
 	if (parseFileForLangs(fn, spec, &linelangs) == RPMRC_OK)
 	    addSaneUniqLangs(langs, linelangs);
-	free(fn);
     argvFree(linelangs);
     }
 
