@@ -3093,11 +3093,11 @@ int mfsFileLinesCount(MfsFileLines flines)
     return argvCount(flines->filelines);
 }
 
-char *mfsFileLinesGetLine(MfsFileLines flines, int index)
+const char *mfsFileLinesGetLine(MfsFileLines flines, int index)
 {
     assert(flines);
     if (index >= 0 && index < argvCount(flines->filelines))
-	return xstrdup(flines->filelines[index]);
+	return flines->filelines[index];
     return NULL;
 }
 
@@ -3135,11 +3135,11 @@ int mfsFileFilesCount(MfsFileFiles ffiles)
     return argvCount(ffiles->filefiles);
 }
 
-char *mfsFileFilesGetFn(MfsFileFiles ffiles, int index)
+const char *mfsFileFilesGetFn(MfsFileFiles ffiles, int index)
 {
     assert(ffiles);
     if (index >= 0 && index < argvCount(ffiles->filefiles))
-    return xstrdup(ffiles->filefiles[index]);
+	return ffiles->filefiles[index];
     return NULL;
 }
 
@@ -3179,11 +3179,11 @@ int mfsPoliciesCount(MfsPolicies policies)
     return argvCount(policies->policies);
 }
 
-char *mfsPoliciesGetPolicy(MfsPolicies policies, int index)
+const char *mfsPoliciesGetPolicy(MfsPolicies policies, int index)
 {
     assert(policies);
     if (index >= 0 && index < argvCount(policies->policies))
-    return xstrdup(policies->policies[index]);
+	return policies->policies[index];
     return NULL;
 }
 

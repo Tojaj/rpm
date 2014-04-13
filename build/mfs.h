@@ -1218,9 +1218,10 @@ int mfsFileLinesCount(MfsFileLines flines);
 /** Gets a line from a list
  * @param flines    List of lines
  * @param index	    Index of line
- * @return	    Newly allocated string with the line or NULL
+ * @return	    Pointer to a string with the line or NULL.
+ *		    The string is owned by the list.
  */
-char *mfsFileLinesGetLine(MfsFileLines flines, int index);
+const char *mfsFileLinesGetLine(MfsFileLines flines, int index);
 
 /** Appends a line to a list of lines
  * @param fline	    List of lines
@@ -1263,9 +1264,10 @@ int mfsFileFilesCount(MfsFileFiles ffiles);
 /** Gets a filename from a list of files
  * @param ffiles    List of files
  * @param index	    Index of line
- * @return	    Newly allocated string with the filename or NULL
+ * @return	    Pointer to a string with the filename or NULL.
+ *		    The string is owned by the list.
  */
-char *mfsFileFilesGetFn(MfsFileFiles ffiles, int index);
+const char *mfsFileFilesGetFn(MfsFileFiles ffiles, int index);
 
 /** Appends an item to a list of files
  * @param ffiles    List of files
@@ -1308,9 +1310,10 @@ int mfsPoliciesCount(MfsPolicies policies);
 /** Gets a policy from a list of policies
  * @param policies  List of policies
  * @param index	    Index of policy
- * @return	    Newly allocated string with the policy or NULL
+ * @return	    Pointer to a string with the policy or NULL.
+ *		    The string is owned by the list.
  */
-char *mfsPoliciesGetPolicy(MfsPolicies policies, int index);
+const char *mfsPoliciesGetPolicy(MfsPolicies policies, int index);
 
 /** Appends an item to a list of policies
  * @param policies  List of policies
