@@ -1115,7 +1115,6 @@ MfsPackage mfsSpecGetPackage(MfsSpec spec, int index)
 
     int x = 0;
     Package pkg = spec->rpmspec->packages;
-    MfsPackage mfspackage;
 
     while (pkg) {
 	if (x == index)
